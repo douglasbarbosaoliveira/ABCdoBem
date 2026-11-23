@@ -4,27 +4,83 @@ import 'app_colors.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: Brightness.light,
+      primary: AppColors.primary,
+      error: AppColors.error,
+    );
+
+    const textStylePadrao = TextStyle(
+      inherit: true,
+      fontFamily: 'Quicksand',
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+      color: AppColors.textDark,
+    );
+
     return ThemeData(
-      // Define a fonte padrão para o app inteiro
+      useMaterial3: true,
+
+      // Fonte padrão da aplicação.
       fontFamily: 'Quicksand',
 
-      // Define a cor de fundo padrão de todos os Scaffolds (Telas)
+      // Cores principais.
+      colorScheme: colorScheme,
+      primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.background,
 
-      // Define a cor principal do Material Design
-      primaryColor: AppColors.primary,
-
-      // Ajuste global para a cor primária
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
-        primary: AppColors.primary,
-        error: AppColors.error,
+      // Configuração global dos textos.
+      textTheme: const TextTheme(
+        bodyMedium: TextStyle(
+          inherit: true,
+          fontFamily: 'Quicksand',
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: AppColors.textDark,
+        ),
+        bodyLarge: TextStyle(
+          inherit: true,
+          fontFamily: 'Quicksand',
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          color: AppColors.textDark,
+        ),
+        labelLarge: textStylePadrao,
       ),
 
-      // Configuração global para Textos
-      textTheme: const TextTheme(
-        bodyMedium: TextStyle(color: AppColors.textDark),
-        bodyLarge: TextStyle(color: AppColors.textDark),
+      // Padronização dos botões elevados.
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(48, 48),
+          textStyle: textStylePadrao,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+
+      // Botões de texto.
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          minimumSize: const Size(48, 48),
+          textStyle: textStylePadrao,
+        ),
+      ),
+
+      // Botões com contorno.
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          minimumSize: const Size(48, 48),
+          textStyle: textStylePadrao,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }

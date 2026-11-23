@@ -1,153 +1,250 @@
-// lib/services/notification_service.dart
-
 import 'dart:convert';
-
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/notification_models.dart';
+import 'session_service.dart';
 
-/// Serviço responsável por consumir a API RESTful de Notificações.
 class NotificationService {
+  static final ValueNotifier<int> totalNaoLidasNotifier = ValueNotifier<int>(0);
+  static final Set<String> _idsLidosLocalmente = {};
+
   final String baseUrl;
   final String? authToken;
 
   NotificationService({
-    this.baseUrl = "https://api.abc-do-bem.com.br/v1",
+    this.baseUrl = "https://abc-do-bem.onrender.com",
     this.authToken,
   });
 
-  Map<String, String> get _headers => {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-    if (authToken != null) "Authorization": "Bearer $authToken",
-  };
+  String? get _tokenFinal => (authToken != null && authToken!.trim().isNotEmpty)
+      ? authToken!.trim()
+      : SessionService.instance.token;
 
-  /// 1. GET /usuarios/{usuarioId}/notificacoes
-  /// Busca o histórico de notificações do usuário.
-  Future<List<NotificacaoModel>> buscarNotificacoes(String usuarioId) async {
-    final url = Uri.parse('$baseUrl/usuarios/$usuarioId/notificacoes');
+  Map<String, String> _montarHeaders(String? tokenParametro) {
+    final token = (tokenParametro != null && tokenParametro.trim().isNotEmpty)
+        ? tokenParametro.trim()
+        : _tokenFinal;
 
-    try {
-      final response = await http.get(url, headers: _headers);
-
-      if (response.statusCode == 200) {
-        final List dados = jsonDecode(response.body);
-        return dados.map((json) => NotificacaoModel.fromJson(json)).toList();
-      } else {
-        throw Exception(
-          "Erro ao buscar notificações. Código: ${response.statusCode}",
-        );
-      }
-    } catch (e) {
-      // Fallback didático para testes enquanto a API estiver fora do ar
-      await Future.delayed(const Duration(milliseconds: 250));
-      return _obterNotificacoesMock(usuarioId);
-    }
+    return {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      if (token != null && token.isNotEmpty) "Authorization": "Bearer $token",
+    };
   }
 
-  /// 2. GET /usuarios/{usuarioId}/notificacoes/nao-lidas/count
-  /// Retorna apenas a contagem numérica de alertas pendentes para alimentar os badges.
-  Future<int> buscarTotalNaoLidas(String usuarioId) async {
-    final url = Uri.parse(
-      '$baseUrl/usuarios/$usuarioId/notificacoes/nao-lidas/count',
-    );
+  /// Descobre se o usuário autenticado é ONG lendo o payload do token JWT
+  bool _verificarSeEhOng(String? tokenParametro, bool? isOngParametro) {
+    if (isOngParametro != null) return isOngParametro;
+
+    final token = (tokenParametro != null && tokenParametro.trim().isNotEmpty)
+        ? tokenParametro.trim()
+        : _tokenFinal;
+
+    if (token == null || token.isEmpty) return false;
 
     try {
-      final response = await http.get(url, headers: _headers);
-
-      if (response.statusCode == 200) {
-        final dados = jsonDecode(response.body);
-        return dados['totalNaoLidas'] ?? 0;
+      final partes = token.split('.');
+      if (partes.length != 3) return false;
+      final payloadStr =
+          utf8.decode(base64Url.decode(base64Url.normalize(partes[1])));
+      final payload = jsonDecode(payloadStr);
+      if (payload is Map) {
+        final role =
+            (payload['role'] ?? payload['tipo'] ?? payload['userType'] ?? '')
+                .toString()
+                .toUpperCase();
+        return role == 'ONG';
       }
     } catch (_) {}
 
-    return 3; // Fallback mock
+    return false;
   }
 
-  /// 3. PATCH /notificacoes/{notificacaoId}/lida
-  /// Marca uma notificação específica como lida (acionado ao abrir o pop-up).
-  Future<void> marcarComoLida(String notificacaoId) async {
-    final url = Uri.parse('$baseUrl/notificacoes/$notificacaoId/lida');
+  /// 1. GET /notificacoes
+  Future<List<NotificacaoModel>> buscarNotificacoes(
+    String usuarioId, {
+    String? token,
+    bool? isOng,
+  }) async {
+    final url = Uri.parse('$baseUrl/notificacoes');
+    final headers = _montarHeaders(token);
 
     try {
-      final response = await http.patch(
-        url,
-        headers: _headers,
-        body: jsonEncode({'lida': true}),
-      );
+      final response = await http
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        throw Exception("Falha ao marcar notificação como lida.");
+      if (response.statusCode == 200) {
+        final dynamic corpo = jsonDecode(utf8.decode(response.bodyBytes));
+
+        final List listaBruta = corpo is List
+            ? corpo
+            : (corpo is Map && corpo['data'] is List ? corpo['data'] : []);
+
+        final bool perfilOng = _verificarSeEhOng(token, isOng);
+        final Set<String> chavesVistas = {};
+
+        final List<NotificacaoModel> notificacoesApi = [];
+        for (final item in listaBruta) {
+          if (item is Map) {
+            final map = Map<String, dynamic>.from(item);
+            final n = NotificacaoModel.fromJson(map);
+            final raw = (n.rawType ?? '').toUpperCase();
+
+            // ONGs não recebem alertas de novas vagas abertas nem pedidos de doação
+            if (perfilOng &&
+                (raw == 'NEW_OPPORTUNITY_MATCH' ||
+                    raw == 'SUPPLY_NEEDED' ||
+                    n.titulo.toLowerCase().contains('nova vaga compatível'))) {
+              continue;
+            }
+
+            // Evita cards duplicados disparados para o mesmo evento/tipo
+            final chaveDedupe = '${raw}_${n.linkId ?? n.id}';
+            if (n.linkId != null &&
+                n.linkId!.isNotEmpty &&
+                !chavesVistas.add(chaveDedupe)) {
+              continue;
+            }
+
+            if (n.titulo.trim().isNotEmpty ||
+                n.mensagemCompleta.trim().isNotEmpty) {
+              if (_idsLidosLocalmente.contains(n.id)) {
+                n.lida = true;
+              }
+              notificacoesApi.add(n);
+            }
+          }
+        }
+
+        if (notificacoesApi.isNotEmpty) {
+          final pendentes = notificacoesApi.where((n) => !n.lida).length;
+          totalNaoLidasNotifier.value = pendentes;
+          return notificacoesApi;
+        }
       }
     } catch (e) {
-      await Future.delayed(const Duration(milliseconds: 50));
+      debugPrint('Erro ao buscar /notificacoes: $e');
     }
+
+    // Fallback de onboarding caso a lista do banco ainda esteja vazia ou offline
+    final padrao = _obterNotificacoesPadraoOnboarding(usuarioId);
+    totalNaoLidasNotifier.value = padrao.where((n) => !n.lida).length;
+    return padrao;
   }
 
-  /// 4. PATCH /usuarios/{usuarioId}/notificacoes/marcar-todas-lidas
-  /// Marca todas as notificações do usuário como lidas simultaneamente.
-  Future<void> marcarTodasComoLidas(String usuarioId) async {
-    final url = Uri.parse(
-      '$baseUrl/usuarios/$usuarioId/notificacoes/marcar-todas-lidas',
+  /// 2. GET /notificacoes/total-nao-lidas
+  Future<int> buscarTotalNaoLidas(
+    String usuarioId, {
+    String? token,
+    bool? isOng,
+  }) async {
+    final lista = await buscarNotificacoes(
+      usuarioId,
+      token: token,
+      isOng: isOng,
     );
-
-    try {
-      final response = await http.patch(url, headers: _headers);
-
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        throw Exception("Falha ao marcar todas como lidas.");
-      }
-    } catch (e) {
-      await Future.delayed(const Duration(milliseconds: 80));
-    }
+    final total = lista.where((n) => !n.lida).length;
+    totalNaoLidasNotifier.value = total;
+    return total;
   }
 
-  // --- MOCK LOCAL DIDÁTICO (Substituído automaticamente pela sua API) ---
-  List<NotificacaoModel> _obterNotificacoesMock(String usuarioId) {
+  /// 3. PATCH /notificacoes/{id}/ler
+  Future<void> marcarComoLida(
+    String notificacaoId, {
+    String? token,
+  }) async {
+    _idsLidosLocalmente.add(notificacaoId);
+    if (totalNaoLidasNotifier.value > 0) {
+      totalNaoLidasNotifier.value = totalNaoLidasNotifier.value - 1;
+    }
+
+    final url = Uri.parse('$baseUrl/notificacoes/$notificacaoId/ler');
+    final headers = _montarHeaders(token);
+
+    try {
+      await http
+          .patch(url, headers: headers)
+          .timeout(const Duration(seconds: 6));
+    } catch (_) {}
+  }
+
+  /// 4. PATCH /notificacoes/ler-todas
+  Future<void> marcarTodasComoLidas(
+    String usuarioId, {
+    String? token,
+  }) async {
+    _idsLidosLocalmente.add("notif-bem-vindo");
+    _idsLidosLocalmente.add("notif-complete-perfil");
+    totalNaoLidasNotifier.value = 0;
+
+    final url = Uri.parse('$baseUrl/notificacoes/ler-todas');
+    final headers = _montarHeaders(token);
+
+    try {
+      await http
+          .patch(url, headers: headers)
+          .timeout(const Duration(seconds: 6));
+    } catch (_) {}
+  }
+
+  /// 5. POST /ongs/supplies/:supplyId/pledges ("Posso ajudar" direto da notificação)
+  Future<bool> registrarCompromissoDoacao({
+    required String supplyId,
+    required double quantidade,
+    DateTime? dataLimiteEntrega,
+    String? observacoes,
+    String? token,
+  }) async {
+    final url = Uri.parse('$baseUrl/ongs/supplies/$supplyId/pledges');
+    final headers = _montarHeaders(token);
+
+    final body = jsonEncode({
+      'quantidade': quantidade,
+      if (dataLimiteEntrega != null)
+        'dataLimiteEntrega': dataLimiteEntrega.toIso8601String(),
+      if (observacoes != null && observacoes.trim().isNotEmpty)
+        'observacoes': observacoes.trim(),
+    });
+
+    final response = await http
+        .post(url, headers: headers, body: body)
+        .timeout(const Duration(seconds: 10));
+
+    return response.statusCode == 200 || response.statusCode == 201;
+  }
+
+  List<NotificacaoModel> _obterNotificacoesPadraoOnboarding(String usuarioId) {
+    final nomeUsuario = SessionService.instance.nomeUsuario;
+    final primeiroNome = (nomeUsuario != null && nomeUsuario.trim().isNotEmpty)
+        ? nomeUsuario.trim().split(' ').first
+        : 'Voluntário';
+
     return [
       NotificacaoModel(
-        id: "notif-1",
-        usuarioId: usuarioId,
-        tipo: TipoNotificacao.evento,
-        titulo: "Novo evento perto de você! 📍",
-        descricaoCurta:
-            "Mutirão de Reforço Escolar a 1,2 km de você em Santo André.",
-        mensagemCompleta: "A ONG Mãos que Fazem abriu vagas para um novo mutirão de reforço escolar que combina 98% com suas habilidades em Santo André. Que tal participar?",
-        criadoEm: DateTime.now().subtract(const Duration(minutes: 15)),
-        lida: false,
-        eventoId: "1",
-      ),
-      NotificacaoModel(
-        id: "notif-2",
-        usuarioId: usuarioId,
-        tipo: TipoNotificacao.aprovacao,
-        titulo: "Inscrição Aprovada! 🎉",
-        descricaoCurta:
-            "Ação Verde ABC confirmou sua presença no Plantio Comunitário.",
-        mensagemCompleta: "Parabéns! Sua solicitação para participar do Plantio Comunitário na Represa Billings foi aprovada pela instituição. Prepare suas luvas e chapéu!",
-        criadoEm: DateTime.now().subtract(const Duration(hours: 2)),
-        lida: false,
-        eventoId: "2",
-      ),
-      NotificacaoModel(
-        id: "notif-3",
-        usuarioId: usuarioId,
-        tipo: TipoNotificacao.conquista,
-        titulo: "Novo Nível: Voluntário Ouro! 🏆",
-        descricaoCurta: "Você ultrapassou 40 horas doadas no ABC do Bem.",
-        mensagemCompleta: "Incrível! Pela sua dedicação e impacto nas cidades do Grande ABC, você acaba de conquistar o selo Ouro no seu perfil. Continue transformando vidas!",
-        criadoEm: DateTime.now().subtract(const Duration(days: 1)),
-        lida: false,
-      ),
-      NotificacaoModel(
-        id: "notif-4",
+        id: "notif-bem-vindo",
         usuarioId: usuarioId,
         tipo: TipoNotificacao.sistema,
-        titulo: "Complete seu perfil 📝",
-        descricaoCurta: "Adicione suas causas favoritas para receber alertas mais precisos.",
-        mensagemCompleta: "Seu perfil está 80% completo. Conte-nos mais sobre as áreas que você mais gosta de atuar para receber convites cirúrgicos de ONGs da sua região.",
-        criadoEm: DateTime.now().subtract(const Duration(days: 3)),
-        lida: true,
+        titulo: "Boas-vindas ao ABC do Bem! 🤝",
+        descricaoCurta:
+            "Olá, $primeiroNome! Sua jornada de impacto social começa aqui.",
+        mensagemCompleta:
+            "Seja muito bem-vindo à nossa rede solidária! Aqui você pode descobrir oportunidades de voluntariado, apoiar ONGs da sua região e transformar vidas através da sua dedicação.",
+        criadoEm: DateTime.now().subtract(const Duration(minutes: 5)),
+        lida: _idsLidosLocalmente.contains("notif-bem-vindo"),
+      ),
+      NotificacaoModel(
+        id: "notif-complete-perfil",
+        usuarioId: usuarioId,
+        tipo: TipoNotificacao.conquista,
+        titulo: "Atualize e complete o seu perfil 📝",
+        descricaoCurta:
+            "Adicione sua foto, causas favoritas e habilidades para conectar-se melhor.",
+        mensagemCompleta:
+            "Com o seu perfil completo e foto atualizada, as instituições locais conseguem conhecer melhor suas habilidades e você terá recomendações mais alinhadas aos seus interesses.",
+        criadoEm: DateTime.now().subtract(const Duration(minutes: 15)),
+        lida: _idsLidosLocalmente.contains("notif-complete-perfil"),
       ),
     ];
   }

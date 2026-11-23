@@ -1,16 +1,12 @@
-// lib/models/notification_models.dart
-
 import 'package:flutter/material.dart';
 
-/// Tipos suportados de notificações no sistema
 enum TipoNotificacao {
-  evento, // Novo evento próximo ou match com o perfil
-  aprovacao, // ONG aprovou a inscrição do voluntário
-  conquista, // Gamificação (horas doadas, selo ouro, etc.)
-  sistema, // Avisos de perfil incompleto, termos, etc.
+  evento, // NEW_OPPORTUNITY_MATCH, NEW_CANDIDATE
+  aprovacao, // APPLICATION_ACCEPTED, NEW_PLEDGE, PLEDGE_DELIVERED
+  conquista, // CERTIFICATE_READY, SUPPLY_NEEDED
+  sistema, // Demais notificações
 }
 
-/// Representa uma notificação enviada para o usuário (Voluntário ou ONG)
 class NotificacaoModel {
   final String id;
   final String usuarioId;
@@ -21,7 +17,10 @@ class NotificacaoModel {
   final DateTime criadoEm;
   bool lida;
 
-  // Parâmetros opcionais contextuais para ações dinâmicas
+  // Campos extras vindos do back-end para navegação/ação
+  final String?
+      rawType; // 'NEW_OPPORTUNITY_MATCH', 'SUPPLY_NEEDED', 'NEW_PLEDGE', 'CERTIFICATE_READY'
+  final String? linkId; // ID da vaga, do suprimento ou da inscrição/certificado
   final String? eventoId;
   final String? ongId;
   final String? rotaDestino;
@@ -35,77 +34,103 @@ class NotificacaoModel {
     required this.mensagemCompleta,
     required this.criadoEm,
     this.lida = false,
+    this.rawType,
+    this.linkId,
     this.eventoId,
     this.ongId,
     this.rotaDestino,
   });
 
-  /// Factory para desserializar a resposta JSON da API RESTful
   factory NotificacaoModel.fromJson(Map<String, dynamic> json) {
+    final String? tipoBruto = (json['type'] ?? json['tipo'])?.toString();
+    final String? link = (json['linkId'] ?? json['eventoId'])?.toString();
+
     TipoNotificacao parseTipo(String? tipoStr) {
-      switch (tipoStr?.toLowerCase()) {
-        case 'evento':
+      switch (tipoStr?.toUpperCase()) {
+        case 'EVENTO':
+        case 'NEW_OPPORTUNITY_MATCH':
+        case 'NEW_CANDIDATE':
           return TipoNotificacao.evento;
-        case 'aprovacao':
+        case 'APROVACAO':
+        case 'APPLICATION_ACCEPTED':
+        case 'APPLICATION_APPROVED':
+        case 'NEW_PLEDGE':
+        case 'PLEDGE_DELIVERED':
           return TipoNotificacao.aprovacao;
-        case 'conquista':
+        case 'CONQUISTA':
+        case 'CERTIFICATE_READY':
+        case 'SUPPLY_NEEDED':
           return TipoNotificacao.conquista;
         default:
           return TipoNotificacao.sistema;
       }
     }
 
+    final String tituloApi = (json['title'] ?? json['titulo'] ?? '').toString();
+    final String mensagemApi = (json['message'] ??
+            json['mensagemCompleta'] ??
+            json['descricaoCurta'] ??
+            '')
+        .toString();
+
     return NotificacaoModel(
       id: json['id']?.toString() ?? '',
-      usuarioId: json['usuarioId']?.toString() ?? '',
-      tipo: parseTipo(json['tipo']),
-      titulo: json['titulo'] ?? '',
-      descricaoCurta: json['descricaoCurta'] ?? '',
-      mensagemCompleta: json['mensagemCompleta'] ?? '',
-      criadoEm: json['criadoEm'] != null
-          ? DateTime.tryParse(json['criadoEm'].toString()) ?? DateTime.now()
+      usuarioId: (json['userId'] ?? json['usuarioId'] ?? '').toString(),
+      tipo: parseTipo(tipoBruto),
+      rawType: tipoBruto,
+      linkId: link,
+      titulo: tituloApi,
+      descricaoCurta: (json['descricaoCurta'] ?? mensagemApi).toString(),
+      mensagemCompleta: mensagemApi,
+      criadoEm: (json['createdAt'] ?? json['criadoEm']) != null
+          ? DateTime.tryParse(
+                  (json['createdAt'] ?? json['criadoEm']).toString()) ??
+              DateTime.now()
           : DateTime.now(),
-      lida: json['lida'] ?? false,
-      eventoId: json['eventoId']?.toString(),
+      lida: json['read'] ?? json['lida'] ?? false,
+      eventoId: tipoBruto == 'NEW_OPPORTUNITY_MATCH'
+          ? link
+          : json['eventoId']?.toString(),
       ongId: json['ongId']?.toString(),
-      rotaDestino: json['rotaDestino'],
+      rotaDestino: json['rotaDestino']?.toString(),
     );
   }
 
-  /// Serialização para envio de dados
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'usuarioId': usuarioId,
-      'tipo': tipo.name,
-      'titulo': titulo,
-      'descricaoCurta': descricaoCurta,
-      'mensagemCompleta': mensagemCompleta,
-      'criadoEm': criadoEm.toIso8601String(),
-      'lida': lida,
-      'eventoId': eventoId,
-      'ongId': ongId,
-      'rotaDestino': rotaDestino,
+      'userId': usuarioId,
+      'type': rawType ?? tipo.name,
+      'linkId': linkId,
+      'title': titulo,
+      'message': mensagemCompleta,
+      'createdAt': criadoEm.toIso8601String(),
+      'read': lida,
     };
   }
 
-  // --- GETTERS AUXILIARES DE DESIGN SYSTEM ---
-
-  /// Retorna o ícone Material correspondente ao tipo
   IconData get icone {
-    switch (tipo) {
-      case TipoNotificacao.evento:
-        return Icons.event_available_rounded;
-      case TipoNotificacao.aprovacao:
-        return Icons.check_circle_outline_rounded;
-      case TipoNotificacao.conquista:
-        return Icons.emoji_events_rounded;
-      case TipoNotificacao.sistema:
-        return Icons.person_outline_rounded;
+    switch (rawType?.toUpperCase()) {
+      case 'SUPPLY_NEEDED':
+      case 'NEW_PLEDGE':
+      case 'PLEDGE_DELIVERED':
+        return Icons.volunteer_activism_rounded;
+      case 'CERTIFICATE_READY':
+        return Icons.workspace_premium_rounded;
+      default:
+        switch (tipo) {
+          case TipoNotificacao.evento:
+            return Icons.event_available_rounded;
+          case TipoNotificacao.aprovacao:
+            return Icons.check_circle_outline_rounded;
+          case TipoNotificacao.conquista:
+            return Icons.emoji_events_rounded;
+          case TipoNotificacao.sistema:
+            return Icons.notifications_active_outlined;
+        }
     }
   }
 
-  /// Retorna a cor temática do card/badge da notificação
   Color get corTema {
     switch (tipo) {
       case TipoNotificacao.evento:
@@ -119,24 +144,16 @@ class NotificacaoModel {
     }
   }
 
-  /// Formatação de tempo relativo amigável (ex: "Há 15 min", "Há 2 horas", "Ontem")
   String get dataRelativa {
     final diff = DateTime.now().difference(criadoEm);
-
-    if (diff.inMinutes < 1) {
-      return "Agora mesmo";
-    } else if (diff.inMinutes < 60) {
-      return "Há ${diff.inMinutes} min";
-    } else if (diff.inHours < 24) {
+    if (diff.inMinutes < 1) return "Agora mesmo";
+    if (diff.inMinutes < 60) return "Há ${diff.inMinutes} min";
+    if (diff.inHours < 24)
       return "Há ${diff.inHours} ${diff.inHours == 1 ? 'hora' : 'horas'}";
-    } else if (diff.inDays == 1) {
-      return "Ontem";
-    } else if (diff.inDays < 7) {
-      return "Há ${diff.inDays} dias";
-    } else {
-      final d = criadoEm.day.toString().padLeft(2, '0');
-      final m = criadoEm.month.toString().padLeft(2, '0');
-      return "$d/$m";
-    }
+    if (diff.inDays == 1) return "Ontem";
+    if (diff.inDays < 7) return "Há ${diff.inDays} dias";
+    final d = criadoEm.day.toString().padLeft(2, '0');
+    final m = criadoEm.month.toString().padLeft(2, '0');
+    return "$d/$m";
   }
 }

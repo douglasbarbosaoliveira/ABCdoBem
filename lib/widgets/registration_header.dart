@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 class RegistrationHeader extends StatelessWidget {
-  final String overlineText; // ex: "CADASTRO" ou "CADASTRO ONG"
-  final String title; // ex: "Sou Voluntário" ou "Instituição"
+  final String overlineText;
+  final String title;
   final String subtitle;
   final int currentStep;
-  final List<String>
-  stepLabels; // ex: ["Dados pessoais", "Habilidades", "Disponibilidade"]
+  final List<String> stepLabels;
+
+  final VoidCallback? onOpenAccessibility;
 
   const RegistrationHeader({
     super.key,
@@ -15,43 +16,84 @@ class RegistrationHeader extends StatelessWidget {
     required this.subtitle,
     required this.currentStep,
     required this.stepLabels,
+    this.onOpenAccessibility,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+      padding: const EdgeInsets.symmetric(
+        vertical: 40,
+        horizontal: 20,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF062222), Color(0xFF0C5252), Color(0xFF1A8F8F)],
+          colors: [
+            Color(0xFF062222),
+            Color(0xFF0C5252),
+            Color(0xFF1A8F8F),
+          ],
         ),
       ),
       child: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: const BoxConstraints(
+              maxWidth: 600,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: Color(0xFF9FE8D8),
-                    size: 20,
-                  ),
-                  label: const Text(
-                    "Voltar",
-                    style: TextStyle(
-                      color: Color(0xFF9FE8D8),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                // Botão voltar e acessibilidade.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Color(0xFF9FE8D8),
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'Voltar',
+                        style: TextStyle(
+                          color: Color(0xFF9FE8D8),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                      ),
                     ),
-                  ),
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                    if (onOpenAccessibility != null)
+                      Tooltip(
+                        message: 'Acessibilidade',
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Material(
+                            color: Colors.white.withOpacity(0.15),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: onOpenAccessibility,
+                              child: const Icon(
+                                Icons.accessibility_new_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
+
                 const SizedBox(height: 24),
+
                 Text(
                   overlineText,
                   style: const TextStyle(
@@ -61,7 +103,9 @@ class RegistrationHeader extends StatelessWidget {
                     letterSpacing: 1.2,
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 Text(
                   title,
                   style: const TextStyle(
@@ -70,7 +114,9 @@ class RegistrationHeader extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 Text(
                   subtitle,
                   style: const TextStyle(
@@ -78,14 +124,28 @@ class RegistrationHeader extends StatelessWidget {
                     fontSize: 15,
                   ),
                 ),
+
                 const SizedBox(height: 40),
+
                 Row(
                   children: [
-                    _buildStepItem("1", stepLabels[0], currentStep >= 1),
+                    _buildStepItem(
+                      '1',
+                      stepLabels[0],
+                      currentStep >= 1,
+                    ),
                     _buildStepDivider(),
-                    _buildStepItem("2", stepLabels[1], currentStep >= 2),
+                    _buildStepItem(
+                      '2',
+                      stepLabels[1],
+                      currentStep >= 2,
+                    ),
                     _buildStepDivider(),
-                    _buildStepItem("3", stepLabels[2], currentStep >= 3),
+                    _buildStepItem(
+                      '3',
+                      stepLabels[2],
+                      currentStep >= 3,
+                    ),
                   ],
                 ),
               ],
@@ -96,7 +156,11 @@ class RegistrationHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildStepItem(String number, String label, bool isActive) {
+  Widget _buildStepItem(
+    String number,
+    String label,
+    bool isActive,
+  ) {
     return Column(
       children: [
         Container(
@@ -137,7 +201,10 @@ class RegistrationHeader extends StatelessWidget {
       child: Container(
         height: 2,
         color: Colors.white.withOpacity(0.2),
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+        margin: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 20,
+        ),
       ),
     );
   }

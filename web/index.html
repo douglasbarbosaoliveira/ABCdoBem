@@ -33,14 +33,37 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+   <!-- VLibras -->
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <script>
+    new window.VLibras.Widget({
+      rootPath: 'https://vlibras.gov.br/app',
+      avatar: 'random',
+      position: 'R'
+    });
+  </script>
+  <script>
+  window.setVlibrasButtonVisible = function (visible) {
+    const button = window.VLibrasWidget?.initBtn;
+
+    if (button) {
+      button.style.display = visible ? '' : 'none';
+    }
+
+    const accessButton = document.querySelector('[vw-access-button]');
+
+    if (accessButton) {
+      accessButton.style.display = visible ? '' : 'none';
+    }
+
+    const container = document.querySelector('[vw]');
+
+    if (container) {
+      container.style.display = visible ? '' : 'none';
+    }
+  };
+</script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

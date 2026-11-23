@@ -1,7 +1,7 @@
-// lib/models/dashboard_models.dart
+// lib/models/dashboard_volunteer_models.dart
 
-import 'event_models.dart';
-import 'ong_models.dart';
+import '../../../eventos/models/evento_model.dart';
+import '../ongs/models/ong_models.dart';
 
 /// Métricas de impacto acumuladas pelo voluntário
 class MetricasImpactoModel {
@@ -17,24 +17,30 @@ class MetricasImpactoModel {
     required this.rankingEstrelas,
   });
 
+  /// Retorna o progresso nas 7 cidades do Grande ABC no formato "0/7" até "7/7"
+  String get cidadesFormatadas => '${totalCidades.clamp(0, 7)}/7';
+
   factory MetricasImpactoModel.fromJson(Map<String, dynamic> json) {
+    final int cidadesRaw =
+        int.tryParse(json['totalCidades']?.toString() ?? '0') ?? 0;
+
     return MetricasImpactoModel(
-      totalCidades: json['totalCidades'] ?? 0,
-      ongsAjudadas: json['ongsAjudadas'] ?? 0,
-      horasDoadas: json['horasDoadas'] ?? '0h',
-      rankingEstrelas: (json['rankingEstrelas'] as num?)?.toDouble() ?? 5.0,
+      totalCidades: cidadesRaw.clamp(0, 7),
+      ongsAjudadas: int.tryParse(json['ongsAjudadas']?.toString() ?? '0') ?? 0,
+      horasDoadas: (json['horasDoadas'] ?? '0h').toString(),
+      rankingEstrelas: (json['rankingEstrelas'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'totalCidades': totalCidades,
-    'ongsAjudadas': ongsAjudadas,
-    'horasDoadas': horasDoadas,
-    'rankingEstrelas': rankingEstrelas,
-  };
+        'totalCidades': totalCidades.clamp(0, 7),
+        'ongsAjudadas': ongsAjudadas,
+        'horasDoadas': horasDoadas,
+        'rankingEstrelas': rankingEstrelas,
+      };
 }
 
-/// Dados completos para renderizar a Home do Voluntário em uma única chamada de API
+/// Dados completos para renderizar a Home do Voluntário
 class VoluntarioDashboardModel {
   final String voluntarioId;
   final String nome;
@@ -57,11 +63,9 @@ class VoluntarioDashboardModel {
   factory VoluntarioDashboardModel.fromJson(Map<String, dynamic> json) {
     return VoluntarioDashboardModel(
       voluntarioId: json['voluntarioId']?.toString() ?? '',
-      nome: json['nome'] ?? 'Voluntário',
-      fotoUrl:
-          json['fotoUrl'] ??
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-      cidade: json['cidade'] ?? 'Grande ABC',
+      nome: (json['nome'] ?? '').toString(),
+      fotoUrl: (json['fotoUrl'] ?? '').toString(),
+      cidade: (json['cidade'] ?? '').toString(),
       metricas: MetricasImpactoModel.fromJson(
         json['metricas'] != null
             ? Map<String, dynamic>.from(json['metricas'])

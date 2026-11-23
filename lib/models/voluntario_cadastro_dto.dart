@@ -2,38 +2,54 @@
 
 /// DTO consolidado com todas as informações das 3 etapas de cadastro do voluntário
 class VoluntarioCadastroDTO {
-  // Etapa 1: Dados básicos e acesso
-  final String nome;
+  // Etapa 1: Dados pessoais, endereço e acesso
+  final String name;
+  final String tipoDocumento;
+  final String cpf;
+  final String nascimento;
+  final String genero;
   final String email;
-  final String? telefone;
-  final String? dataNascimento;
+  final String password;
+  final String telefone;
+  final String cep;
+  final String logradouro;
+  final String numero;
+  final String bairro;
   final String cidade;
   final String estado;
-  final String? senha;
+  final String bio;
 
-  // Etapa 2: Interesses e Habilidades
+  // Etapa 2: Habilidades
   final List<String> habilidades;
 
   // Etapa 3: Disponibilidade e Aceites Legais
   final List<String> disponibilidade;
-  final bool termosAceitos;
-  final bool lgpdAceita;
+  final bool aceiteTermos;
+  final bool aceiteLgpd;
 
   VoluntarioCadastroDTO({
-    required this.nome,
+    required this.name,
+    required this.tipoDocumento,
+    required this.cpf,
+    required this.nascimento,
+    required this.genero,
     required this.email,
-    this.telefone,
-    this.dataNascimento,
+    required this.password,
+    required this.telefone,
+    required this.cep,
+    required this.logradouro,
+    required this.numero,
+    required this.bairro,
     required this.cidade,
     required this.estado,
-    this.senha,
+    required this.bio,
     required this.habilidades,
     required this.disponibilidade,
-    required this.termosAceitos,
-    required this.lgpdAceita,
+    required this.aceiteTermos,
+    required this.aceiteLgpd,
   });
 
-  /// Converte a união dos Maps das 3 etapas no objeto tipado
+  /// Factory: centraliza o mapeamento dos dados passados pelas etapas
   factory VoluntarioCadastroDTO.deEtapas({
     required Map<String, String> dadosBasicos,
     required List<String> habilidades,
@@ -41,57 +57,87 @@ class VoluntarioCadastroDTO {
     required bool termosAceitos,
     required bool lgpdAceita,
   }) {
+    // Unifica nome e sobrenome se vierem separados
+    final nome = (dadosBasicos['nome'] ?? '').trim();
+    final sobrenome = (dadosBasicos['sobrenome'] ?? '').trim();
+    final nomeCompleto = sobrenome.isNotEmpty ? "$nome $sobrenome" : nome;
+
     return VoluntarioCadastroDTO(
-      nome: dadosBasicos['nome'] ?? '',
-      email: dadosBasicos['email'] ?? '',
-      telefone: dadosBasicos['telefone'],
-      dataNascimento: dadosBasicos['dataNascimento'],
-      cidade: dadosBasicos['cidade'] ?? 'Grande ABC',
-      estado: dadosBasicos['estado'] ?? 'SP',
-      senha: dadosBasicos['senha'],
+      name: nomeCompleto,
+      tipoDocumento: dadosBasicos['tipo_documento'] ?? 'CPF',
+      // Aceita 'cpf' ou 'documento'
+      cpf: (dadosBasicos['cpf'] ?? dadosBasicos['documento'] ?? '').trim(),
+      // Aceita 'data_nascimento' ou 'nascimento'
+      nascimento:
+          (dadosBasicos['data_nascimento'] ?? dadosBasicos['nascimento'] ?? '')
+              .trim(),
+      genero: (dadosBasicos['genero'] ?? '').trim(),
+      email: (dadosBasicos['email'] ?? '').trim().toLowerCase(),
+      // Aceita 'password' ou 'senha'
+      password: dadosBasicos['password'] ?? dadosBasicos['senha'] ?? '',
+      telefone: (dadosBasicos['telefone'] ?? '').trim(),
+      cep: (dadosBasicos['cep'] ?? '').trim(),
+      logradouro:
+          (dadosBasicos['rua'] ?? dadosBasicos['logradouro'] ?? '').trim(),
+      numero: (dadosBasicos['numero'] ?? '').trim(),
+      bairro: (dadosBasicos['bairro'] ?? '').trim(),
+      cidade: (dadosBasicos['cidade'] ?? '').trim(),
+      estado: (dadosBasicos['estado'] ?? 'SP').trim(),
+      bio: (dadosBasicos['bio'] ?? '').trim(),
       habilidades: habilidades,
       disponibilidade: disponibilidade,
-      termosAceitos: termosAceitos,
-      lgpdAceita: lgpdAceita,
+      aceiteTermos: termosAceitos,
+      aceiteLgpd: lgpdAceita,
     );
   }
 
-  /// Converte para o formato JSON esperado pelo endpoint da API
+  /// Converte para o payload exato exigido pelo backend
   Map<String, dynamic> toJson() {
     return {
-      'nome': nome.trim(),
-      'email': email.trim().toLowerCase(),
-      'telefone': telefone,
-      'dataNascimento': dataNascimento,
-      'cidade': cidade,
-      'estado': estado,
-      if (senha != null && senha!.isNotEmpty) 'senha': senha,
-      'habilidades': habilidades,
-      'disponibilidade': disponibilidade,
-      'termos_aceitos': termosAceitos,
-      'lgpd_aceita': lgpdAceita,
+      "name": name,
+      "tipoDocumento": tipoDocumento,
+      "cpf": cpf,
+      "nascimento": nascimento,
+      "email": email,
+      "password": password,
+      "telefone": telefone,
+      "cep": cep,
+      "logradouro": logradouro,
+      "numero": numero,
+      "bairro": bairro,
+      "cidade": cidade,
+      "estado": estado,
+      "bio": bio,
+      "habilidades": habilidades,
+      "disponibilidade": disponibilidade,
+      "aceiteTermos": aceiteTermos,
+      "aceiteLgpd": aceiteLgpd,
     };
   }
 }
 
-/// Resposta de sucesso do cadastro retornada pela API
+/// Resposta retornada pelo endpoint /auth/userRegister
 class RespostaCadastroVoluntario {
   final String voluntarioId;
-  final String tokenJWT;
+  final String? tokenJWT;
   final String mensagem;
 
   RespostaCadastroVoluntario({
     required this.voluntarioId,
-    required this.tokenJWT,
+    this.tokenJWT,
     required this.mensagem,
   });
 
   factory RespostaCadastroVoluntario.fromJson(Map<String, dynamic> json) {
     return RespostaCadastroVoluntario(
-      voluntarioId:
-          json['voluntarioId']?.toString() ?? json['id']?.toString() ?? '',
-      tokenJWT: json['token'] ?? json['tokenJWT'] ?? '',
-      mensagem: json['mensagem'] ?? 'Cadastro concluído com sucesso!',
+      voluntarioId: json['id']?.toString() ??
+          json['userId']?.toString() ??
+          json['voluntarioId']?.toString() ??
+          'voluntario-1',
+      tokenJWT: json['token'] ?? json['accessToken'] ?? json['jwt'],
+      mensagem: json['message'] ??
+          json['mensagem'] ??
+          'Cadastro concluído com sucesso!',
     );
   }
 }

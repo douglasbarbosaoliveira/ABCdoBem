@@ -4,7 +4,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../models/ong_models.dart';
+import '../ongs/models/ong_models.dart';
 
 /// Serviço responsável pelo consumo dos endpoints REST de busca de ONGs e recomendações
 class OngService {
@@ -17,10 +17,10 @@ class OngService {
   });
 
   Map<String, String> get _headers => {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-    if (authToken != null) "Authorization": "Bearer $authToken",
-  };
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        if (authToken != null) "Authorization": "Bearer $authToken",
+      };
 
   /// 1. GET /ongs?termo={query}&categoria={cat}
   /// Lista todas as ONGs com suporte a filtros
@@ -30,8 +30,8 @@ class OngService {
       if (categoria != null && categoria != 'Todas') 'categoria': categoria,
     };
 
-    final url = Uri.parse('$baseUrl/ongs')
-        .replace(queryParameters: queryParams);
+    final url =
+        Uri.parse('$baseUrl/ongs').replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(url, headers: _headers);
@@ -83,7 +83,8 @@ class OngService {
         cidade: "Santo André",
         match: "98% match",
         categoria: "Educação",
-        imagem: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=200",
+        imagem:
+            "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=200",
       ),
       OngRecomendadaModel(
         id: 2,
@@ -91,7 +92,8 @@ class OngService {
         cidade: "São Bernardo",
         match: "92% match",
         categoria: "Meio Ambiente",
-        imagem: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200",
+        imagem:
+            "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200",
       ),
       OngRecomendadaModel(
         id: 3,
@@ -99,7 +101,8 @@ class OngService {
         cidade: "São Caetano",
         match: "89% match",
         categoria: "Saúde",
-        imagem: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=200",
+        imagem:
+            "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=200",
       ),
     ];
   }
@@ -112,7 +115,8 @@ class OngService {
         cidade: "Santo André",
         categoria: "Educação",
         voluntarios: 34,
-        imagem: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=200",
+        imagem:
+            "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=200",
         posMapa: PosicaoMapa(x: 0.6, y: 0.3),
       ),
       OngModel(
@@ -121,7 +125,8 @@ class OngService {
         cidade: "São Bernardo do Campo",
         categoria: "Meio Ambiente",
         voluntarios: 52,
-        imagem: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200",
+        imagem:
+            "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200",
         posMapa: PosicaoMapa(x: 0.45, y: 0.55),
       ),
       OngModel(
@@ -130,7 +135,8 @@ class OngService {
         cidade: "São Caetano do Sul",
         categoria: "Saúde",
         voluntarios: 28,
-        imagem: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=200",
+        imagem:
+            "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=200",
         posMapa: PosicaoMapa(x: 0.52, y: 0.22),
       ),
       OngModel(
@@ -139,7 +145,8 @@ class OngService {
         cidade: "Mauá",
         categoria: "Cultura",
         voluntarios: 21,
-        imagem: "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=200",
+        imagem:
+            "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=200",
         posMapa: PosicaoMapa(x: 0.65, y: 0.75),
       ),
       OngModel(
@@ -148,7 +155,8 @@ class OngService {
         cidade: "Diadema",
         categoria: "Habitação",
         voluntarios: 39,
-        imagem: "https://images.unsplash.com/photo-1593113598332-cd288d649433?w=200",
+        imagem:
+            "https://images.unsplash.com/photo-1593113598332-cd288d649433?w=200",
         posMapa: PosicaoMapa(x: 0.5, y: 0.8),
       ),
     ];

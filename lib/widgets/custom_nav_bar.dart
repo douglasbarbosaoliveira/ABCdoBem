@@ -2,88 +2,114 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../utils/responsive.dart';
+
 class CustomNavBar extends StatelessWidget {
   final VoidCallback onLogin;
-  final VoidCallback onRegisterVolunteer;
+  final VoidCallback onOpenAccessibility;
 
   const CustomNavBar({
     super.key,
     required this.onLogin,
-    required this.onRegisterVolunteer,
+    required this.onOpenAccessibility,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 600;
+    final bool isMobile = Responsive.isMobile(context);
 
     return ClipRRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ImageFilter.blur(
+          sigmaX: 10,
+          sigmaY: 10,
+        ),
         child: Container(
-          height: 70,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          height: isMobile ? 64 : 70,
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 14 : 20,
+            vertical: 8,
+          ),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
-            border: const Border(bottom: BorderSide(color: Color(0xFFC2E4DC))),
+            color: Colors.white.withOpacity(0.92),
+            border: const Border(
+              bottom: BorderSide(
+                color: Color(0xFFC2E4DC),
+              ),
+            ),
           ),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
+              constraints: const BoxConstraints(
+                maxWidth: 1100,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Image.asset(
-                        'assets/images/logo_abcdobem.png',
-                        width: 36,
-                        height: 36,
+                  // Logo ABC do Bem.
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Image.asset(
+                        'assets/images/abcdobem_texto.png',
+                        height: isMobile ? 16 : 24,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.centerLeft,
+                        filterQuality: FilterQuality.high,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.eco_rounded,
+                            size: isMobile ? 18 : 26,
+                            color: const Color(0xFF0C6B6B),
+                          );
+                        },
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        "ABC do Bem",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF062222),
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
+
+                  // Ações do header.
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       TextButton(
                         onPressed: onLogin,
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFF0C6B6B),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 8 : 16,
+                          ),
                           textStyle: const TextStyle(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        child: const Text("Entrar"),
+                        child: const Text('Entrar'),
                       ),
+
                       const SizedBox(width: 8),
-                      if (isDesktop)
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF0C6B6B), Color(0xFF29B0A0)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ElevatedButton(
-                            onPressed: onRegisterVolunteer,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.bold,
+
+                      // Botão de acessibilidade.
+                      Tooltip(
+                        message: 'Acessibilidade',
+                        child: SizedBox(
+                          width: 30,
+                          height: 30,
+                          child: Material(
+                            color: const Color(0xFF0C6B6B),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: onOpenAccessibility,
+                              child: const Center(
+                                child: Icon(
+                                  Icons.accessibility_new_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
                             ),
-                            child: const Text("Cadastrar-se"),
                           ),
                         ),
+                      ),
                     ],
                   ),
                 ],

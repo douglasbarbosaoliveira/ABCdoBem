@@ -1,89 +1,141 @@
-// lib/services/dashboard_service.dart
+// lib/services/dashboard_volunteer_service.dart
 
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
+import 'package:flutter/foundation.dart';
 import '../models/dashboard_volunteer_models.dart';
-import '../models/event_models.dart';
-import '../models/ong_models.dart';
+import '../eventos/models/evento_model.dart';
+import '../eventos/services/evento_service.dart';
+import '../voluntarios/services/voluntario_profile_service.dart';
+import 'session_service.dart';
 
-/// Serviço que fornece os dados agregados da página inicial do voluntário
+/// Serviço que fornece os dados reais agregados da página inicial do voluntário
 class DashboardService {
-  final String baseUrl;
   final String? authToken;
 
-  DashboardService({
-    this.baseUrl = "https://api.abc-do-bem.com.br/v1",
-    this.authToken,
-  });
+  DashboardService({this.authToken});
 
-  Map<String, String> get _headers => {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-    if (authToken != null) "Authorization": "Bearer $authToken",
-  };
+  String get _tokenAtual => (authToken != null && authToken!.trim().isNotEmpty)
+      ? authToken!.trim()
+      : (SessionService.instance.token ?? '');
 
-  /// GET /voluntarios/{voluntarioId}/dashboard
-  /// Retorna as métricas, o próximo evento inscrito e a ONG mais próxima
-  Future<VoluntarioDashboardModel> buscarDashboard(String voluntarioId) async {
-    final url = Uri.parse('$baseUrl/voluntarios/$voluntarioId/dashboard');
-
-    try {
-      final response = await http.get(url, headers: _headers);
-
-      if (response.statusCode == 200) {
-        return VoluntarioDashboardModel.fromJson(jsonDecode(response.body));
-      } else {
-        throw Exception("Erro ao obter dados da Home: ${response.statusCode}");
-      }
-    } catch (e) {
-      // Fallback local com os dados mockados enquanto a API estiver offline
-      await Future.delayed(const Duration(milliseconds: 300));
-      return _obterDashboardMock(voluntarioId);
-    }
+  String _normalizarCidadeAbc(String rawCidade) {
+    final lower = rawCidade.trim().toLowerCase();
+    if (lower.contains('santo andr')) return 'santo andre';
+    if (lower.contains('bernardo')) return 'sao bernardo';
+    if (lower.contains('caetano')) return 'sao caetano';
+    if (lower.contains('diadema')) return 'diadema';
+    if (lower.contains('mau')) return 'maua';
+    if (lower.contains('ribeir')) return 'ribeirao pires';
+    if (lower.contains('rio grande')) return 'rio grande da serra';
+    return '';
   }
 
-  VoluntarioDashboardModel _obterDashboardMock(String voluntarioId) {
+  /// Busca 100% dos dados reais do perfil e das ações do voluntário na API
+  Future<VoluntarioDashboardModel> buscarDashboard(String voluntarioId) async {
+    final String idReal = (voluntarioId.trim().isEmpty ||
+            voluntarioId == 'voluntario-1' ||
+            voluntarioId == 'meu-perfil')
+        ? (SessionService.instance.usuarioId ?? voluntarioId)
+        : voluntarioId;
+
+    debugPrint('================ [DEBUG DASHBOARD HOME] ================');
+    debugPrint('1. idReal resolvido: "$idReal"');
+    debugPrint('2. token presente?: ${_tokenAtual.isNotEmpty}');
+
+    final profileService = VoluntarioProfileService();
+    final perfil = await profileService.buscarPerfil(
+      idReal,
+      token: _tokenAtual,
+      forcarAtualizacao: true, // <-- Ignora cache antigo em memória
+    );
+
+    debugPrint('3. Perfil retornado -> Nome: ${perfil.nome}');
+    debugPrint(
+        '4. Perfil retornado -> TotalHoras: ${perfil.totalHoras}, TotalEventos: ${perfil.totalEventos}, Estrelas: ${perfil.estrelasEngajamento}');
+    debugPrint(
+        '5. Qtd acoesParticipadas no perfil: ${perfil.acoesParticipadas.length}');
+
+    Map<String, EventoModel> mapaEventos = {};
+    try {
+      final eventosCatalogo =
+          await EventoService().listarEventos(token: _tokenAtual);
+      mapaEventos = {for (final ev in eventosCatalogo) ev.id: ev};
+    } catch (e) {
+      debugPrint('Erro ao listar catálogo de eventos: $e');
+    }
+
+    final Set<String> cidadesUnicas = {};
+    final Set<String> ongsUnicas = {};
+    EventoModel? proximoEventoReal;
+    final agora = DateTime.now();
+
+    for (final acao in perfil.acoesParticipadas) {
+      debugPrint(
+          '   -> Ação: "${acao.titulo}" | ONG: "${acao.ongNome}" | Status: ${acao.isConcluidaOuAprovada}');
+      final String idEvento =
+          acao.opportunityId.isNotEmpty ? acao.opportunityId : acao.id;
+      final EventoModel? evDetalhe = mapaEventos[idEvento];
+
+      if (acao.isConcluidaOuAprovada) {
+        if (acao.ongNome.trim().isNotEmpty) {
+          ongsUnicas.add(acao.ongNome.trim().toLowerCase());
+        }
+
+        String cidadeAcao = '';
+        try {
+          cidadeAcao = ((acao as dynamic).cidade ?? '').toString();
+        } catch (_) {}
+
+        if (cidadeAcao.isEmpty && evDetalhe != null) {
+          cidadeAcao = evDetalhe.cidade;
+        }
+
+        final cidadeNormalizada = _normalizarCidadeAbc(cidadeAcao);
+        if (cidadeNormalizada.isNotEmpty) {
+          cidadesUnicas.add(cidadeNormalizada);
+        }
+      }
+
+      if (evDetalhe != null && evDetalhe.dataHoraInicio.isAfter(agora)) {
+        if (proximoEventoReal == null ||
+            evDetalhe.dataHoraInicio
+                .isBefore(proximoEventoReal.dataHoraInicio)) {
+          proximoEventoReal = evDetalhe;
+        }
+      }
+    }
+
+    if (cidadesUnicas.isEmpty &&
+        ongsUnicas.isNotEmpty &&
+        perfil.cidade.isNotEmpty) {
+      final cidadePerfil = _normalizarCidadeAbc(perfil.cidade);
+      if (cidadePerfil.isNotEmpty) {
+        cidadesUnicas.add(cidadePerfil);
+      }
+    }
+
+    final metricasFinais = MetricasImpactoModel(
+      totalCidades: cidadesUnicas.length.clamp(0, 7),
+      ongsAjudadas: ongsUnicas.length,
+      horasDoadas: "${perfil.totalHoras}h",
+      rankingEstrelas: perfil.estrelasEngajamento.toDouble().clamp(0.0, 5.0),
+    );
+
+    debugPrint(
+        '6. MÉTRICAS FINAIS CALCULADAS -> Cidades: ${metricasFinais.cidadesFormatadas} | ONGs: ${metricasFinais.ongsAjudadas} | Horas: ${metricasFinais.horasDoadas} | Ranking: ${metricasFinais.rankingEstrelas}');
+    debugPrint('========================================================');
+
     return VoluntarioDashboardModel(
-      voluntarioId: voluntarioId,
-      nome: "Ana Carolina",
-      fotoUrl:
-          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400",
-      cidade: "Santo André",
-      metricas: MetricasImpactoModel(
-        totalCidades: 3,
-        ongsAjudadas: 5,
-        horasDoadas: "48h",
-        rankingEstrelas: 4.8,
-      ),
-      proximoEvento: EventoModel(
-        id: "1",
-        ongId: "ong-1",
-        ongNome: "Mãos que Fazem",
-        titulo: "Mutirão de Reforço Escolar",
-        descricao: "Aulas de apoio em matemática e português para crianças do ensino fundamental.",
-        cidade: "Santo André",
-        data: "2026-09-12",
-        horario: "08:00 - 12:00",
-        dataHoraInicio: DateTime(2026, 9, 12, 8, 0),
-        imagemUrl: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=600",
-        tags: ["Educação", "Crianças"],
-        vagasTotais: 15,
-        vagasRestantes: 7,
-        criadoEm: DateTime.now(),
-        statusInscricao: "Aprovado",
-      ),
-      ongProxima: OngModel(
-        id: 1,
-        nome: "Mãos que Fazem",
-        cidade: "Santo André",
-        categoria: "Educação",
-        voluntarios: 34,
-        imagem: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=200",
-        posMapa: PosicaoMapa(x: 0.6, y: 0.3),
-        endereco: "1,2 km de distância",
-      ),
+      voluntarioId: idReal,
+      nome: perfil.nome.isNotEmpty
+          ? perfil.nome
+          : (SessionService.instance.nomeUsuario ?? 'Voluntário'),
+      fotoUrl: perfil.fotoUrl.isNotEmpty
+          ? perfil.fotoUrl
+          : (SessionService.instance.fotoUrl ?? ''),
+      cidade: perfil.cidade.isNotEmpty ? perfil.cidade : 'Grande ABC',
+      metricas: metricasFinais,
+      proximoEvento: proximoEventoReal,
+      ongProxima: null,
     );
   }
 }

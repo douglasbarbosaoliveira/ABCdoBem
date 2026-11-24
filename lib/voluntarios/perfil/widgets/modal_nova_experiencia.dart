@@ -12,6 +12,8 @@ class ModalNovaExperiencia {
     List<AcaoParticipadaVoluntarioModel>? acoesParticipadas,
     List<({String id, String titulo, String dataFormatada})>? eventosOpcoes,
     bool carregandoEventos = false,
+    String? textoInicial,
+    List<XFile>? imagensIniciais,
     required ImagePicker picker,
     required Function({
       required String texto,
@@ -20,10 +22,13 @@ class ModalNovaExperiencia {
       required BuildContext modalParentContext,
     }) onSolicitarConfirmacao,
   }) {
-    final TextEditingController textoCtrl = TextEditingController();
-    final List<XFile> midiasSelecionadas = [];
+    final TextEditingController textoCtrl = TextEditingController(
+      text: textoInicial ?? '',
+    );
+    final List<XFile> midiasSelecionadas = [
+      if (imagensIniciais != null) ...imagensIniciais,
+    ];
 
-    // Normaliza as ações para exibir no seletor, aceitando objetos, opções genéricas ou strings brutas
     final List<AcaoParticipadaVoluntarioModel> listaAcoes = [];
     if (acoesParticipadas != null && acoesParticipadas.isNotEmpty) {
       listaAcoes.addAll(acoesParticipadas);
@@ -57,16 +62,15 @@ class ModalNovaExperiencia {
       }
     }
 
-    // Inicia sem nenhum evento selecionado por padrão para exibir o hint "Deseja citar algum evento?"
     AcaoParticipadaVoluntarioModel? acaoSelecionada;
-
-    int palavrasContadas = 0;
 
     int contarPalavras(String str) {
       final limpo = str.trim();
       if (limpo.isEmpty) return 0;
       return limpo.split(RegExp(r'\s+') as Pattern).length;
     }
+
+    int palavrasContadas = contarPalavras(textoCtrl.text);
 
     DateTime? converterData(String dataStr) {
       final limpo = dataStr.trim();
@@ -154,7 +158,6 @@ class ModalNovaExperiencia {
                   ),
                   const SizedBox(height: 14),
 
-                  // Campo de Texto Livre
                   TextField(
                     controller: textoCtrl,
                     maxLines: 5,
@@ -188,7 +191,6 @@ class ModalNovaExperiencia {
                   ),
                   const SizedBox(height: 8),
 
-                  // Contador de palavras
                   Row(
                     children: [
                       const Spacer(),
@@ -206,11 +208,9 @@ class ModalNovaExperiencia {
                   ),
                   const SizedBox(height: 14),
 
-                  // Seletor de fotos e Dropdown de eventos integrados
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Seletor de fotos compacto
                       GestureDetector(
                         onTap: selecionarFoto,
                         child: Container(
@@ -241,7 +241,6 @@ class ModalNovaExperiencia {
                       ),
                       const SizedBox(width: 8),
 
-                      // Dropdown para marcar evento associado (Opcional)
                       Expanded(
                         child: Container(
                           height: 60,
@@ -299,7 +298,7 @@ class ModalNovaExperiencia {
                                           value: acao,
                                           child: Text(
                                             acao.dataFormatada.isNotEmpty
-                                                ? "[$statusLabel] ${acao.titulo}"
+                                                ? "[$statusLabel]${acao.titulo}"
                                                 : acao.titulo,
                                             style: const TextStyle(
                                               fontSize: 11.5,
@@ -323,7 +322,6 @@ class ModalNovaExperiencia {
                   ),
                   const SizedBox(height: 12),
 
-                  // Lista horizontal de miniaturas de fotos selecionadas
                   if (midiasSelecionadas.isNotEmpty) ...[
                     SizedBox(
                       height: 60,
@@ -337,31 +335,24 @@ class ModalNovaExperiencia {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: kIsWeb
-                                    ? Image.network(
-                                        item.path,
+                                child: FutureBuilder<Uint8List>(
+                                  future: item.readAsBytes(),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData) {
+                                      return Container(
                                         width: 60,
                                         height: 60,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : FutureBuilder<Uint8List>(
-                                        future: item.readAsBytes(),
-                                        builder: (context, snapshot) {
-                                          if (!snapshot.hasData) {
-                                            return Container(
-                                              width: 60,
-                                              height: 60,
-                                              color: Colors.grey[200],
-                                            );
-                                          }
-                                          return Image.memory(
-                                            snapshot.data!,
-                                            width: 60,
-                                            height: 60,
-                                            fit: BoxFit.cover,
-                                          );
-                                        },
-                                      ),
+                                        color: Colors.grey[200],
+                                      );
+                                    }
+                                    return Image.memory(
+                                      snapshot.data!,
+                                      width: 60,
+                                      height: 60,
+                                      fit: BoxFit.cover,
+                                    );
+                                  },
+                                ),
                               ),
                               Positioned(
                                 top: 2,
@@ -393,7 +384,6 @@ class ModalNovaExperiencia {
 
                   const SizedBox(height: 8),
 
-                  // Botão Publicar
                   ElevatedButton(
                     onPressed:
                         (textoCtrl.text.trim().isEmpty || isLimiteExcedido)

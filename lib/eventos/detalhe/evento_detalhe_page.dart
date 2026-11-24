@@ -25,6 +25,7 @@ enum _StatusTemporalEvento {
   inscricoesAbertas,
   inscricoesEncerradas,
   eventoPassado,
+  eventoFinalizado,
 }
 
 class EventoDetalhePage extends StatefulWidget {
@@ -126,6 +127,10 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
   }
 
   _StatusTemporalEvento _avaliarStatusTemporal(EventoModel ev) {
+    if (ev.isFinalizado) {
+      return _StatusTemporalEvento.eventoFinalizado;
+    }
+
     final DateTime agora = DateTime.now();
     final DateTime conclusao = _calcularHorarioConclusao(ev);
 
@@ -187,12 +192,14 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
           children: [
             Icon(Icons.schedule_rounded, color: Color(0xFFD46B08)),
             SizedBox(width: 8),
-            Text(
-              'Inscrição Enviada!',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF062222),
+            Expanded(
+              child: Text(
+                'Inscrição Enviada!',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF062222),
+                ),
               ),
             ),
           ],
@@ -204,7 +211,7 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
         ),
         actions: [
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.of(ctx).pop(),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0C6B6B),
               shape: RoundedRectangleBorder(
@@ -287,11 +294,11 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Manter'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             child: const Text(
               'Cancelar Candidatura',
@@ -354,6 +361,109 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
     }
   }
 
+  Future<void> _confirmarFinalizacaoEvento(EventoModel ev) async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.verified_rounded, color: Color(0xFF0C6B6B)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Finalizar Evento?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF062222),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Antes de confirmar, certifique-se de já ter salvo a Lista de Chamada acima.\n\n'
+          'Ao finalizar este evento:\n'
+          '• O status será alterado definitivamente para Concluído;\n'
+          '• Os certificados serão emitidos para todos os voluntários marcados como presentes;\n'
+          '• Os participantes receberão a notificação de conclusão.\n\n'
+          'Deseja continuar?',
+          style: TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF333333)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFF546E7A)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0C6B6B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Sim, Finalizar Evento',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmou == true && mounted) {
+      setState(() => _carregando = true);
+      try {
+        final ok = await _eventoService.finalizarEvento(
+          ev.id,
+          token: SessionService.instance.token,
+        );
+
+        if (!mounted) return;
+
+        if (ok) {
+          setState(() {
+            _houveAlteracao = true;
+            _evento = ev.copyWith(status: 'CONCLUIDA');
+            _carregando = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Evento finalizado e certificados emitidos com sucesso!',
+              ),
+              backgroundColor: Color(0xFF0C6B6B),
+            ),
+          );
+          await _carregarDados();
+        } else {
+          setState(() => _carregando = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Não foi possível finalizar o evento.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _carregando = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Widget _buildBadgeStatusTemporal(_StatusTemporalEvento status) {
     late final String label;
     late final Color bgColor;
@@ -379,25 +489,191 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
         textColor = const Color(0xFF546E7A);
         icon = Icons.history_rounded;
         break;
+      case _StatusTemporalEvento.eventoFinalizado:
+        label = 'Evento Concluído';
+        bgColor = const Color(0xFFE8F5E9);
+        textColor = const Color(0xFF1B5E20);
+        icon = Icons.verified_rounded;
+        break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(8),
+        border: status == _StatusTemporalEvento.eventoFinalizado
+            ? Border.all(color: const Color(0xFFA5D6A7))
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: textColor),
           const SizedBox(width: 5),
-          Text(
-            label,
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBannerEventoConcluido() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF81C784), width: 1.2),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.verified_rounded, color: Color(0xFF2E7D32), size: 22),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ação Solidária Concluída',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFF1B5E20),
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Este evento já foi encerrado pela organização e os certificados dos voluntários presentes foram emitidos.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.35,
+                    color: Color(0xFF2E7D32),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecaoFinalizarEvento(EventoModel ev) {
+    if (ev.isFinalizado) {
+      return _buildBannerEventoConcluido();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD591)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.flag_circle_rounded,
+                color: Color(0xFFD46B08),
+                size: 20,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Chamada & Encerramento da Ação',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFF062222),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '1º Confira a presença dos voluntários na Lista de Chamada.\n'
+            '2º Finalize o evento para encerrar as inscrições e emitir os certificados aos presentes.',
             style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.bold,
-              color: textColor,
+              fontSize: 12.5,
+              height: 1.45,
+              color: Color(0xFF546E7A),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: () => _abrirGestaoChamada(ev),
+              icon: const Icon(
+                Icons.checklist_rtl_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '1. Fazer / Conferir Lista de Chamada',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0C6B6B),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton.icon(
+              onPressed: () => _confirmarFinalizacaoEvento(ev),
+              icon: const Icon(
+                Icons.check_circle_outline_rounded,
+                color: Color(0xFFD46B08),
+                size: 18,
+              ),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '2. Finalizar Evento e Emitir Certificados',
+                  style: TextStyle(
+                    color: Color(0xFFD46B08),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFD46B08), width: 1.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
           ),
         ],
@@ -410,10 +686,14 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
     _StatusTemporalEvento statusTemporal, {
     required bool incluirSafeAreaBottom,
   }) {
+    final bool isEncerradoOuPassado =
+        statusTemporal == _StatusTemporalEvento.eventoPassado ||
+            statusTemporal == _StatusTemporalEvento.eventoFinalizado;
+
     return EventoDetalheBottomBar(
       evento: ev,
       isDono: _isDonoDoEvento,
-      isEventoPassado: statusTemporal == _StatusTemporalEvento.eventoPassado,
+      isEventoPassado: isEncerradoOuPassado,
       isInscricoesEncerradas:
           statusTemporal == _StatusTemporalEvento.inscricoesEncerradas,
       aguardandoAprovacaoLocal: _aguardandoAprovacao,
@@ -436,7 +716,8 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
     final _StatusTemporalEvento? statusTemporal =
         ev != null ? _avaliarStatusTemporal(ev) : null;
     final bool isEventoPassado =
-        statusTemporal == _StatusTemporalEvento.eventoPassado;
+        statusTemporal == _StatusTemporalEvento.eventoPassado ||
+            statusTemporal == _StatusTemporalEvento.eventoFinalizado;
 
     return PopScope(
       canPop: false,
@@ -447,6 +728,7 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
         backgroundColor: const Color(0xFFF0FAF7),
         bottomNavigationBar: !isDesktop
             ? Column(
+                key: const ValueKey('mobile_bottom_container'),
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (ev != null && statusTemporal != null)
@@ -468,6 +750,7 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
           children: [
             if (isDesktop)
               AppSidebar(
+                key: const ValueKey('desktop_sidebar'),
                 currentIndex: navIndex,
                 usuarioId: idSessao,
                 tipoUsuario: _tipoUsuarioEfetivo,
@@ -610,6 +893,10 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
                           color: Color(0xFF0C6B6B),
                         ),
                       ),
+                      if (ev.isFinalizado) ...[
+                        const SizedBox(height: 14),
+                        _buildBannerEventoConcluido(),
+                      ],
                       const SizedBox(height: 16),
                       if (!isEventoPassado) ...[
                         EventoDetalheVagasCard(
@@ -672,6 +959,10 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
                         usuarioAtualId: idSessao,
                         isDono: _isDonoDoEvento,
                       ),
+                      if (_isDonoDoEvento) ...[
+                        const SizedBox(height: 18),
+                        _buildSecaoFinalizarEvento(ev),
+                      ],
                     ],
                   ),
                 ),

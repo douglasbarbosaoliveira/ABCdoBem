@@ -102,6 +102,9 @@ class EventoDiscoveryService {
             final bool jaInscrito = statusLocal != null || ev.isInscrito;
 
             if (!incluirEncerrados) {
+              if (ev.isFinalizado) {
+                continue;
+              }
               final DateTime limiteInscricao =
                   ev.dataHoraInicio.subtract(const Duration(hours: 1));
               if (!jaInscrito && !agora.isBefore(limiteInscricao)) {
@@ -166,6 +169,7 @@ class EventoDiscoveryService {
             if (id.isEmpty) continue;
             final ev =
                 mapaCatalogo?[id] ?? EventoMapper.mapearJsonParaEvento(item);
+            if (ev.isFinalizado) continue;
 
             resultado.add(<String, dynamic>{
               'evento': ev,
@@ -220,6 +224,7 @@ class EventoDiscoveryService {
             if (id.isEmpty) continue;
             final ev =
                 mapaCatalogo?[id] ?? EventoMapper.mapearJsonParaEvento(item);
+            if (ev.isFinalizado) continue;
 
             resultado.add(<String, dynamic>{
               'evento': ev,
@@ -250,7 +255,6 @@ class EventoDiscoveryService {
       for (final ev in base) ev.id: ev,
     };
 
-    // Dispara IA/ML e captura de GPS em paralelo para que a localização não bloqueie a UI
     final Future<List<MapaJson>> futureIa = listarEventosRecomendados(
       token: token,
       mapaCatalogo: mapaCatalogo,
@@ -284,7 +288,6 @@ class EventoDiscoveryService {
       }
     }
 
-    // Fallback: se ambos retornarem vazio, preenche com as vagas ativas do catálogo
     if (consolidado.isEmpty && base.isNotEmpty) {
       for (final ev in base) {
         consolidado[ev.id] = <String, dynamic>{

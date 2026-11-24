@@ -123,7 +123,7 @@ class EventoGestaoOngService {
     return null;
   }
 
-  /// PATCH /opportunities/{id} [ONG] — Atualiza dados ou status da vaga
+  /// PATCH /opportunities/{id} [ONG] — Atualiza dados ou status (ATIVA, LOTADA, CONCLUIDA, CANCELADA)
   Future<EventoModel?> atualizarEvento(
     String eventoId,
     MapaJson payloadAtualizado, {
@@ -169,6 +169,38 @@ class EventoGestaoOngService {
       token: token,
     );
     return atualizado != null;
+  }
+
+  /// POST /opportunities/{id}/finalize-certificates [ONG] — Finaliza o evento e emite certificados aos presentes
+  Future<bool> finalizarEvento(String eventoId, {String? token}) async {
+    final url = Uri.parse("$baseUrl/opportunities/$eventoId/finalize-certificates");
+
+    try {
+      final res = await http
+          .post(
+            url,
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return true;
+      } else {
+        final bodyTexto = utf8.decode(res.bodyBytes);
+        String mensagemErro = "HTTP ${res.statusCode}";
+        try {
+          final dynamic erroJson = jsonDecode(bodyTexto);
+          if (erroJson is Map && erroJson['message'] != null) {
+            final dynamic msg = erroJson['message'];
+            mensagemErro = msg is List ? msg.join(', ') : msg.toString();
+          }
+        } catch (_) {}
+        throw Exception(mensagemErro);
+      }
+    } catch (e) {
+      debugPrint("EventoGestaoOngService.finalizarEvento erro: $e");
+      rethrow;
+    }
   }
 
   /// DELETE /opportunities/{id} [ONG] — Exclui uma vaga
@@ -247,7 +279,7 @@ class EventoGestaoOngService {
               "$baseUrl/opportunities/applications/$applicationId/presenca",
             ),
             headers: _headers(token, jsonBody: true),
-            body: jsonEncode(<String, dynamic>{"presente": presente}),
+            body: jsonEncode(<String, dynamic>{"attended": presente}),
           )
           .timeout(const Duration(seconds: 15));
       return res.statusCode == 200 || res.statusCode == 204;

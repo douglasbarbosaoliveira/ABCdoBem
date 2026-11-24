@@ -115,23 +115,30 @@ class _PostCardWidgetState extends State<PostCardWidget> {
   }
 
   Widget _buildImagem(String rawUrl, {double? width, double? height}) {
-    final url = VoluntarioPerfilModel.sanitizarImagem(rawUrl);
-    if (url.isEmpty) return const SizedBox.shrink();
+    final original = rawUrl.trim();
+    if (original.isEmpty) return const SizedBox.shrink();
 
-    if (url.startsWith('data:image')) {
+    if (original.startsWith('data:image')) {
       try {
-        final Uint8List bytes = base64Decode(url.split(',').last);
+        final partes = original.split(',');
+        if (partes.length < 2) return const SizedBox.shrink();
+        final limpo = partes.last.replaceAll(RegExp(r'\s+'), '');
+        final Uint8List bytes = base64Decode(limpo);
+        if (bytes.isEmpty) return const SizedBox.shrink();
         return Image.memory(
           bytes,
           width: width,
           height: height,
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
           errorBuilder: (_, __, ___) => const SizedBox.shrink(),
         );
       } catch (_) {
         return const SizedBox.shrink();
       }
     }
+
+    final url = VoluntarioPerfilModel.sanitizarImagem(original);
+    if (url.isEmpty) return const SizedBox.shrink();
 
     return Image.network(
       url,

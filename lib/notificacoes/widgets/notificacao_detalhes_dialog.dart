@@ -1,14 +1,25 @@
 // lib/notificacoes/widgets/notificacao_detalhes_dialog.dart
 
+import 'dart:js_interop';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:web/web.dart' as web;
+
 import '../../eventos/detalhe/evento_detalhe_page.dart';
 import '../../eventos/voluntario/eventos_page.dart';
 import '../../models/notification_models.dart';
 import '../../ongs/gestao_eventos/gestao_eventos_page.dart';
 import '../../services/notification_service.dart';
 import '../../services/session_service.dart';
+import '../../voluntarios/perfil/widgets/modal_nova_experiencia.dart';
+import '../../voluntarios/services/voluntario_profile_service.dart';
+import 'certificado_imagem_generator.dart';
 
 class NotificacaoDetalhesDialog {
+  static const String _baseUrl = "https://abc-do-bem.onrender.com";
+
   static void exibir(
     BuildContext context, {
     required NotificacaoModel notificacao,
@@ -85,6 +96,143 @@ class NotificacaoDetalhesDialog {
     );
   }
 
+  static Future<void> _baixarCertificadoPdf(
+    BuildContext dialogContext, {
+    required String applicationId,
+    required void Function(String mensagem) onFeedback,
+  }) async {
+    final token = SessionService.instance.token?.trim() ?? '';
+    if (token.isEmpty) {
+      onFeedback(
+          "Sessão expirada. Faça login novamente para baixar o certificado.");
+      return;
+    }
+
+    if (applicationId.trim().isEmpty) {
+      onFeedback("Certificado indisponível para esta notificação.");
+      return;
+    }
+
+    try {
+      final url = Uri.parse(
+        "$_baseUrl/certificates/applications/${applicationId.trim()}/download",
+      );
+
+      final res = await http.get(
+        url,
+        headers: {
+          "Accept": "application/pdf",
+          "Authorization": "Bearer $token",
+        },
+      ).timeout(const Duration(seconds: 25));
+
+      if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+        String filename = "certificado-abc-do-bem.pdf";
+        final disposition = res.headers['content-disposition'] ?? '';
+        final match = RegExp(r'filename="?([^"]+)"?').firstMatch(disposition);
+        if (match != null && (match.group(1)?.trim().isNotEmpty ?? false)) {
+          filename = match.group(1)!.trim();
+        }
+
+        if (kIsWeb) {
+          final jsArray = res.bodyBytes.toJS;
+          final blobParts = <JSAny>[jsArray].toJS;
+          final blob = web.Blob(
+            blobParts,
+            web.BlobPropertyBag(type: 'application/pdf'),
+          );
+          final objectUrl = web.URL.createObjectURL(blob);
+
+          final anchor =
+              web.document.createElement('a') as web.HTMLAnchorElement;
+          anchor.href = objectUrl;
+          anchor.download = filename;
+          anchor.target = '_blank';
+          web.document.body?.append(anchor);
+          anchor.click();
+          anchor.remove();
+
+          Future.delayed(const Duration(seconds: 10), () {
+            web.URL.revokeObjectURL(objectUrl);
+          });
+        }
+
+        if (dialogContext.mounted) {
+          Navigator.of(dialogContext).pop();
+        }
+        onFeedback("Download do certificado iniciado!");
+      } else {
+        onFeedback(
+          "Não foi possível baixar o certificado agora. Tente novamente.",
+        );
+      }
+    } catch (_) {
+      onFeedback(
+        "Não foi possível baixar o certificado agora. Tente novamente.",
+      );
+    }
+  }
+
+ static Future<void> _compartilharCertificadoNoFeed(
+    BuildContext dialogContext, {
+    required BuildContext rootContext,
+    required NotificacaoModel notificacao,
+    required void Function(String mensagem) onFeedback,
+  }) async {
+    final resultado = await CertificadoImagemGenerator.gerarPngDoCertificado(
+      rootContext,
+      applicationId: notificacao.linkId ?? '',
+      mensagemFallback: notificacao.mensagemCompleta,
+    );
+
+    if (resultado == null) {
+      onFeedback("Não foi possível preparar a imagem do certificado agora.");
+      return;
+    }
+
+    if (dialogContext.mounted) {
+      Navigator.of(dialogContext).pop();
+    }
+    if (!rootContext.mounted) return;
+
+    final usuarioId = SessionService.instance.usuarioId?.trim() ?? '';
+    final token = SessionService.instance.token?.trim() ?? '';
+    final profileService = VoluntarioProfileService();
+
+    ModalNovaExperiencia.abrir(
+      context: rootContext,
+      eventosConcluidos: [resultado.tituloEvento],
+      textoInicial: resultado.textoSugerido,
+      imagensIniciais: [resultado.imagemPng],
+      picker: ImagePicker(),
+      onSolicitarConfirmacao: ({
+        required String texto,
+        required String origem,
+        required List<XFile> imagens,
+        required BuildContext modalParentContext,
+      }) async {
+        if (modalParentContext.mounted) {
+          Navigator.of(modalParentContext).pop();
+        }
+
+        final sucesso = await profileService.publicarExperiencia(
+          usuarioId,
+          texto,
+          null,
+          opportunityId: null,
+          imagensArquivos: imagens,
+          token: token,
+        );
+
+        onFeedback(
+          sucesso
+              ? "Certificado publicado no feed com sucesso!"
+              : "Não foi possível publicar no feed agora. Tente novamente.",
+        );
+      },
+    );
+  }
+
   static Widget _buildAcoes(
     BuildContext context, {
     required BuildContext rootContext,
@@ -101,7 +249,6 @@ class NotificacaoDetalhesDialog {
 
       Navigator.pop(context);
 
-      // Se houver o ID da ação/evento, abre direto a tela de detalhes da ação (igual na Home)
       if (eventoId.isNotEmpty) {
         Navigator.push(
           rootContext,
@@ -116,7 +263,6 @@ class NotificacaoDetalhesDialog {
         return;
       }
 
-      // Fallback caso a notificação não traga linkId
       if (isOng) {
         Navigator.push(
           rootContext,
@@ -171,7 +317,118 @@ class NotificacaoDetalhesDialog {
       ),
     );
 
-    // 1. NECESSIDADE DE SUPRIMENTO -> Botão "Posso Ajudar"
+    // 1. CERTIFICADO PRONTO -> Compartilhar no Feed (PNG) + Baixar PDF + Fechar
+    if (rawType == 'CERTIFICATE_READY') {
+      bool baixandoPdf = false;
+      bool preparandoPost = false;
+
+      return StatefulBuilder(
+        builder: (ctx, setStateBtn) {
+          final ocupado = baixandoPdf || preparandoPost;
+
+          final btnCompartilharFeed = ElevatedButton.icon(
+            onPressed: ocupado
+                ? null
+                : () async {
+                    setStateBtn(() => preparandoPost = true);
+                    await _compartilharCertificadoNoFeed(
+                      context,
+                      rootContext: rootContext,
+                      notificacao: notificacao,
+                      onFeedback: onCompartilhar,
+                    );
+                    if (ctx.mounted) {
+                      setStateBtn(() => preparandoPost = false);
+                    }
+                  },
+            icon: preparandoPost
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(
+                    Icons.campaign_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+            label: Text(
+              preparandoPost ? "Preparando..." : "Publicar no Feed",
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0C6B6B),
+              padding: EdgeInsets.symmetric(vertical: isMobile ? 14 : 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+          );
+
+          final btnBaixarPdf = OutlinedButton.icon(
+            onPressed: ocupado
+                ? null
+                : () async {
+                    setStateBtn(() => baixandoPdf = true);
+                    await _baixarCertificadoPdf(
+                      context,
+                      applicationId: notificacao.linkId ?? '',
+                      onFeedback: onCompartilhar,
+                    );
+                    if (ctx.mounted) {
+                      setStateBtn(() => baixandoPdf = false);
+                    }
+                  },
+            icon: baixandoPdf
+                ? const SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF0C6B6B),
+                    ),
+                  )
+                : const Icon(
+                    Icons.picture_as_pdf_rounded,
+                    size: 17,
+                    color: Color(0xFF0C6B6B),
+                  ),
+            label: Text(
+              baixandoPdf ? "Gerando PDF..." : "Baixar PDF",
+              style: const TextStyle(
+                color: Color(0xFF0C6B6B),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(vertical: isMobile ? 14 : 13),
+              side: const BorderSide(color: Color(0xFF0C6B6B)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              montarParBotoes(btnCompartilharFeed, btnBaixarPdf),
+              const SizedBox(height: 8),
+              btnFechar,
+            ],
+          );
+        },
+      );
+    }
+
+    // 2. NECESSIDADE DE SUPRIMENTO -> Botão "Posso Ajudar"
     if (rawType == 'SUPPLY_NEEDED' &&
         notificacao.linkId != null &&
         notificacao.linkId!.isNotEmpty) {
@@ -203,7 +460,7 @@ class NotificacaoDetalhesDialog {
       return montarParBotoes(btnPossoAjudar, btnFechar);
     }
 
-    // 2. DOAÇÕES RECEBIDAS / PROMESSAS
+    // 3. DOAÇÕES RECEBIDAS / PROMESSAS
     if (rawType == 'NEW_PLEDGE' || rawType == 'PLEDGE_DELIVERED') {
       return SizedBox(
         width: double.infinity,
@@ -227,7 +484,7 @@ class NotificacaoDetalhesDialog {
       );
     }
 
-    // 3. EVENTOS / VAGAS E APROVAÇÕES DE CANDIDATURA
+    // 4. EVENTOS / VAGAS E APROVAÇÕES DE CANDIDATURA
     if (notificacao.tipo == TipoNotificacao.evento ||
         notificacao.tipo == TipoNotificacao.aprovacao) {
       final labelPrincipal = notificacao.tipo == TipoNotificacao.evento
@@ -253,7 +510,7 @@ class NotificacaoDetalhesDialog {
       return montarParBotoes(btnPrincipal, btnFechar);
     }
 
-    // 4. CONQUISTAS E CERTIFICADOS
+    // 5. CONQUISTAS GERAIS
     if (notificacao.tipo == TipoNotificacao.conquista) {
       final btnCompartilhar = ElevatedButton.icon(
         onPressed: () {
@@ -278,7 +535,7 @@ class NotificacaoDetalhesDialog {
       return montarParBotoes(btnCompartilhar, btnFechar);
     }
 
-    // 5. SISTEMA / GERAL
+    // 6. SISTEMA / GERAL
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(

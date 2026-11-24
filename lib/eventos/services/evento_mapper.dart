@@ -137,6 +137,7 @@ class EventoMapper {
       vagasRestantes: vagasRestantes,
       criadoEm: DateTime.tryParse(item['createdAt']?.toString() ?? '') ??
           DateTime.now(),
+      status: (item['status'] ?? 'OPEN').toString().trim().toUpperCase(),
       isInscrito: jaInscrito,
       statusInscricao: item['applicationStatus']?.toString() ??
           item['statusInscricao']?.toString(),

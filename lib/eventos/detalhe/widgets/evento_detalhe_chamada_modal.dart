@@ -63,8 +63,8 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
     super.initState();
     _horasPadrao = _calcularHorasEstimadas(widget.evento.horario);
 
-    // Preenche inicialmente com os locais se existirem
     for (final p in widget.evento.participantesConfirmados) {
+      if (p.id == widget.evento.ongId) continue;
       _participantes.add(
         _ChamadaParticipanteItem(
           applicationId: p.id,
@@ -86,7 +86,9 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
         s == 'CONFIRMED' ||
         s == 'CONFIRMADA' ||
         s == 'APROVADO' ||
+        s == 'PRESENT' ||
         s == 'PRESENTE' ||
+        s == 'ABSENT' ||
         s == 'ATTENDED';
   }
 
@@ -100,8 +102,6 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
     try {
       final url =
           Uri.parse("$_baseUrl/opportunities/${widget.evento.id}/applications");
-      debugPrint("=== [GET] CHAMADA - BUSCANDO VOLUNTÁRIOS ACEITOS ===");
-      debugPrint("URL: $url");
 
       final res = await http.get(
         url,
@@ -112,7 +112,6 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
       ).timeout(const Duration(seconds: 12));
 
       final bodyTexto = utf8.decode(res.bodyBytes);
-      debugPrint("Status Code Chamada Applications: ${res.statusCode}");
 
       if (res.statusCode == 200) {
         final decoded = jsonDecode(bodyTexto);
@@ -137,26 +136,29 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
 
               final appId = (item['id'] ?? '').toString();
               final userId = (user['id'] ?? item['userId'] ?? appId).toString();
+
+              if (userId.isEmpty || userId == widget.evento.ongId) continue;
+
               final nome =
                   (user['name'] ?? user['nome'] ?? item['nome'] ?? 'Voluntário')
                       .toString();
               final avatar =
                   (user['avatar'] ?? user['fotoUrl'] ?? item['fotoUrl'] ?? '')
                       .toString();
-              final attended = item['attended'] == true;
+              final bool jaValidadoAntes = item['attended'] != null;
+              final bool attended =
+                  jaValidadoAntes ? (item['attended'] == true) : true;
 
-              if (userId.isNotEmpty) {
-                carregados.add(
-                  _ChamadaParticipanteItem(
-                    applicationId: appId,
-                    userId: userId,
-                    nome: nome,
-                    fotoUrl: avatar.isEmpty ? null : avatar,
-                    jaPresente: attended,
-                  ),
-                );
-                novasPresencas[userId] = true;
-              }
+              carregados.add(
+                _ChamadaParticipanteItem(
+                  applicationId: appId,
+                  userId: userId,
+                  nome: nome,
+                  fotoUrl: avatar.isEmpty ? null : avatar,
+                  jaPresente: item['attended'] == true,
+                ),
+              );
+              novasPresencas[userId] = attended;
             }
           }
         }
@@ -173,7 +175,7 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
         return;
       }
     } catch (e) {
-      debugPrint("Erro ao buscar lista de chamada na API: $e");
+      debugPrint("Erro ao buscar lista de chamada: $e");
     }
 
     if (mounted) setState(() => _carregando = false);
@@ -269,29 +271,70 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
   }
 
   Future<void> _salvarChamada() async {
+    final token = SessionService.instance.token;
+    if (token == null || token.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Sessão expirada. Faça login novamente."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     setState(() => _salvando = true);
 
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
+      final headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer ${token.trim()}",
+      };
+
+      for (final p in _participantes) {
+        if (p.applicationId.isEmpty) continue;
+        final bool presente = _presencas[p.userId] ?? false;
+
+        final url = Uri.parse(
+          "$_baseUrl/opportunities/applications/${p.applicationId}/presenca",
+        );
+
+        final res = await http
+            .patch(
+              url,
+              headers: headers,
+              body: jsonEncode(<String, dynamic>{
+                "attended": presente,
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (res.statusCode != 200 && res.statusCode != 204) {
+          throw Exception("Erro ao salvar presença");
+        }
+      }
 
       if (mounted) {
-        Navigator.pop(context, true);
+        final totalPresentes = _presencas.values.where((v) => v).length;
+        Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "Lista de presença salva com sucesso! (${_presencas.values.where((v) => v).length} presenças validadas)",
+              "Lista de presença salva! ($totalPresentes presença(s) confirmada(s))",
             ),
             backgroundColor: const Color(0xFF0C6B6B),
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() => _salvando = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Erro ao salvar lista de chamada. Tente novamente."),
+            content: Text(
+              "Não foi possível salvar a lista de presença. Tente novamente.",
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -315,7 +358,6 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Barra superior de arraste
             Center(
               child: Container(
                 margin: const EdgeInsets.only(top: 10, bottom: 8),
@@ -328,7 +370,6 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
               ),
             ),
 
-            // Cabeçalho do Modal
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Row(
@@ -360,7 +401,7 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded, color: Colors.grey),
                   ),
                 ],
@@ -368,7 +409,6 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
             ),
             const Divider(height: 1),
 
-            // Ajuste de Horas e Ações Rápidas
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Container(
@@ -434,7 +474,6 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
               ),
             ),
 
-            // Controles de Seleção Rápida
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -476,7 +515,6 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
               ),
             ),
 
-            // Lista de Voluntários
             Expanded(
               child: _carregando
                   ? const Center(
@@ -537,7 +575,6 @@ class _EventoDetalheChamadaModalState extends State<EventoDetalheChamadaModal> {
                         ),
             ),
 
-            // Botão Inferior de Confirmação
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(20),

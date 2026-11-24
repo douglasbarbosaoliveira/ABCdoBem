@@ -56,6 +56,7 @@ class EventoModel {
   final List<String> requisitos;
   final List<String> necessidades;
   final bool emiteCertificado;
+  final String status;
   final bool isInscrito;
   final String? statusInscricao;
   final String? inscricaoId;
@@ -83,6 +84,7 @@ class EventoModel {
     this.requisitos = const [],
     this.necessidades = const [],
     this.emiteCertificado = true,
+    this.status = 'OPEN',
     this.isInscrito = false,
     this.statusInscricao,
     this.inscricaoId,
@@ -99,6 +101,15 @@ class EventoModel {
 
   bool get isEsgotado => vagasRestantes <= 0;
   bool get isQuaseEsgotado => vagasRestantes > 0 && vagasRestantes <= 3;
+
+  bool get isFinalizado {
+    final s = status.trim().toUpperCase();
+    return s == 'FINISHED' ||
+        s == 'CLOSED' ||
+        s == 'COMPLETED' ||
+        s == 'CONCLUIDO' ||
+        s == 'FINALIZADO';
+  }
 
   EventoModel copyWith({
     String? id,
@@ -121,6 +132,7 @@ class EventoModel {
     List<String>? requisitos,
     List<String>? necessidades,
     bool? emiteCertificado,
+    String? status,
     bool? isInscrito,
     String? statusInscricao,
     String? inscricaoId,
@@ -148,6 +160,7 @@ class EventoModel {
       requisitos: requisitos ?? this.requisitos,
       necessidades: necessidades ?? this.necessidades,
       emiteCertificado: emiteCertificado ?? this.emiteCertificado,
+      status: status ?? this.status,
       isInscrito: isInscrito ?? this.isInscrito,
       statusInscricao: statusInscricao ?? this.statusInscricao,
       inscricaoId: inscricaoId ?? this.inscricaoId,
@@ -217,6 +230,7 @@ class EventoModel {
               st == 'CONFIRMED' ||
               st == 'CONFIRMADA' ||
               st == 'APROVADO' ||
+              st == 'PRESENT' ||
               st == 'PRESENTE') {
             final parsed = EventoParticipanteModel.fromJson(p);
             if (parsed.id.isNotEmpty) {
@@ -324,6 +338,7 @@ class EventoModel {
       emiteCertificado: (json['generatesCertificate'] ??
           json['emiteCertificado'] ??
           true) as bool,
+      status: (json['status'] ?? 'OPEN').toString().trim().toUpperCase(),
       isInscrito: inscrito,
       statusInscricao: status,
       inscricaoId: inscricaoId,
@@ -357,6 +372,7 @@ class EventoModel {
       'requisitos': requisitos,
       'necessidades': necessidades,
       'emiteCertificado': emiteCertificado,
+      'status': status,
       'isInscrito': isInscrito,
       'statusInscricao': statusInscricao,
       'inscricaoId': inscricaoId,

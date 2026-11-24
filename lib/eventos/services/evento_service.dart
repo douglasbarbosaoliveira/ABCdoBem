@@ -176,4 +176,7 @@ class EventoService {
     String? token,
   }) =>
       _gestaoOng.atualizarStatusEvento(eventoId, novoStatus, token: token);
+
+  Future<bool> finalizarEvento(String eventoId, {String? token}) =>
+      _gestaoOng.finalizarEvento(eventoId, token: token);
 }

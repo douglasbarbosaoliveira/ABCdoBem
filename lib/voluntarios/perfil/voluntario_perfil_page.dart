@@ -329,7 +329,7 @@ class _VoluntarioPerfilPageState extends State<VoluntarioPerfilPage> {
     return Scaffold(
       // Fundo menta com mais contraste para destacar os cards brancos
       backgroundColor: const Color(0xFFE2F3EF),
-      bottomNavigationBar: isMobile
+      bottomNavigationBar: !isDesktop
           ? AppBottomNav(
               currentIndex: navIndex,
               usuarioId: sessaoId,
@@ -337,6 +337,7 @@ class _VoluntarioPerfilPageState extends State<VoluntarioPerfilPage> {
             )
           : null,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isDesktop)
             AppSidebar(

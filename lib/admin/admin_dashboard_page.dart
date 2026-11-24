@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../services/session_service.dart';
+import '../utils/responsive.dart';
 import 'models/admin_models.dart';
 import 'services/admin_service.dart';
 import 'widgets/admin_stats_view.dart';
@@ -198,6 +199,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDesktop = Responsive.isDesktop(context);
+
     if (_erroAcesso != null) {
       return Scaffold(
         appBar: AppBar(
@@ -230,6 +233,28 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       );
     }
 
+    final List<Widget> conteudoAbas = [
+      AdminStatsView(stats: _stats),
+      AdminUsersView(
+        usuarios: _usuarios,
+        filtroRole: _filtroRole,
+        onFiltroChanged: (novo) {
+          setState(() => _filtroRole = novo);
+          _carregarDados();
+        },
+        onAlterarRole: _alterarRole,
+        onBanir: _confirmarBanimento,
+      ),
+      AdminModerationView(
+        oportunidadeCtrl: _idOportunidadeCtrl,
+        postOngCtrl: _idPostOngCtrl,
+        experienciaCtrl: _idExperienciaCtrl,
+        onRemoverOportunidade: _removerOportunidade,
+        onRemoverPostOng: _removerPostOng,
+        onRemoverExperiencia: _removerExperiencia,
+      ),
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
       appBar: AppBar(
@@ -247,48 +272,69 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _abaSelecionada,
-        selectedItemColor: const Color(0xFF0C6B6B),
-        unselectedItemColor: Colors.grey,
-        onTap: (index) => setState(() => _abaSelecionada = index),
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined), label: 'Métricas'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.manage_accounts_outlined),
-              label: 'Utilizadores'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.shield_outlined), label: 'Moderação'),
-        ],
-      ),
+      bottomNavigationBar: isDesktop
+          ? null
+          : BottomNavigationBar(
+              currentIndex: _abaSelecionada,
+              selectedItemColor: const Color(0xFF0C6B6B),
+              unselectedItemColor: Colors.grey,
+              onTap: (index) => setState(() => _abaSelecionada = index),
+              items: const [
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.analytics_outlined), label: 'Métricas'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.manage_accounts_outlined),
+                    label: 'Utilizadores'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.shield_outlined), label: 'Moderação'),
+              ],
+            ),
       body: _carregando
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF0C6B6B)))
-          : IndexedStack(
-              index: _abaSelecionada,
-              children: [
-                AdminStatsView(stats: _stats),
-                AdminUsersView(
-                  usuarios: _usuarios,
-                  filtroRole: _filtroRole,
-                  onFiltroChanged: (novo) {
-                    setState(() => _filtroRole = novo);
-                    _carregarDados();
-                  },
-                  onAlterarRole: _alterarRole,
-                  onBanir: _confirmarBanimento,
+          : isDesktop
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    NavigationRail(
+                      selectedIndex: _abaSelecionada,
+                      onDestinationSelected: (index) =>
+                          setState(() => _abaSelecionada = index),
+                      labelType: NavigationRailLabelType.all,
+                      selectedIconTheme:
+                          const IconThemeData(color: Color(0xFF0C6B6B)),
+                      selectedLabelTextStyle: const TextStyle(
+                        color: Color(0xFF0C6B6B),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      destinations: const [
+                        NavigationRailDestination(
+                          icon: Icon(Icons.analytics_outlined),
+                          label: Text('Métricas'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.manage_accounts_outlined),
+                          label: Text('Utilizadores'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.shield_outlined),
+                          label: Text('Moderação'),
+                        ),
+                      ],
+                    ),
+                    const VerticalDivider(width: 1, color: Color(0xFFC2E4DC)),
+                    Expanded(
+                      child: IndexedStack(
+                        index: _abaSelecionada,
+                        children: conteudoAbas,
+                      ),
+                    ),
+                  ],
+                )
+              : IndexedStack(
+                  index: _abaSelecionada,
+                  children: conteudoAbas,
                 ),
-                AdminModerationView(
-                  oportunidadeCtrl: _idOportunidadeCtrl,
-                  postOngCtrl: _idPostOngCtrl,
-                  experienciaCtrl: _idExperienciaCtrl,
-                  onRemoverOportunidade: _removerOportunidade,
-                  onRemoverPostOng: _removerPostOng,
-                  onRemoverExperiencia: _removerExperiencia,
-                ),
-              ],
-            ),
     );
   }
 }

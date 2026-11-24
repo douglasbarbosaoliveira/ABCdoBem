@@ -160,7 +160,7 @@ class _BuscarOngsPageState extends State<BuscarOngsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
-      bottomNavigationBar: isMobile
+      bottomNavigationBar: !isDesktop
           ? AppBottomNav(
               currentIndex: 1,
               usuarioId: idAtivo,
@@ -168,6 +168,7 @@ class _BuscarOngsPageState extends State<BuscarOngsPage> {
             )
           : null,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isDesktop)
             AppSidebar(

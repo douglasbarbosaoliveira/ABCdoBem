@@ -148,7 +148,7 @@ class _NotificacoesPageState extends State<NotificacoesPage> {
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF0FAF7),
-        bottomNavigationBar: isMobile
+        bottomNavigationBar: !isDesktop
             ? AppBottomNav(
                 currentIndex: navIndex,
                 usuarioId: idAtivo,
@@ -156,6 +156,7 @@ class _NotificacoesPageState extends State<NotificacoesPage> {
               )
             : null,
         body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (isDesktop)
               AppSidebar(

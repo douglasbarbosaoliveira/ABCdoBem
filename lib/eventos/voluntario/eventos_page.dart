@@ -258,10 +258,11 @@ class _EventosPageState extends State<EventosPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
-      bottomNavigationBar: isMobile
+      bottomNavigationBar: !isDesktop
           ? AppBottomNav(currentIndex: 2, usuarioId: _idResolvido)
           : null,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isDesktop) AppSidebar(currentIndex: 2, usuarioId: _idResolvido),
           Expanded(

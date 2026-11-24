@@ -678,9 +678,14 @@ class CustomFooter extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const Text(
-                      "© 2026 ABC do Bem. Todos os direitos reservados.",
-                      style: TextStyle(color: Color(0xFF9FE8D8), fontSize: 12),
+                    const SizedBox(width: 16),
+                    const Flexible(
+                      child: Text(
+                        "© 2026 ABC do Bem. Todos os direitos reservados.",
+                        style: TextStyle(color: Color(0xFF9FE8D8), fontSize: 12),
+                        textAlign: TextAlign.right,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),

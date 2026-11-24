@@ -8,6 +8,7 @@ import '../../services/session_service.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/header/app_header.dart';
 import '../../widgets/sidebar/app_sidebar.dart';
+import '../../widgets/bottom_nav/app_bottom_nav.dart';
 
 class EditarNecessidadesPage extends StatefulWidget {
   final List<String> necessidadesIniciais;
@@ -218,18 +219,25 @@ class _EditarNecessidadesPageState extends State<EditarNecessidadesPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
-      body: SafeArea(
-        child: Row(
-          children: [
-            if (isDesktop)
-              AppSidebar(
-                currentIndex: 0,
-                usuarioId: idAtual,
-                tipoUsuario: "ong",
-              ),
-            Expanded(
-              child: Column(
-                children: [
+      bottomNavigationBar: !isDesktop
+          ? AppBottomNav(
+              currentIndex: 0,
+              usuarioId: idAtual,
+              tipoUsuario: "ong",
+            )
+          : null,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isDesktop)
+            AppSidebar(
+              currentIndex: 0,
+              usuarioId: idAtual,
+              tipoUsuario: "ong",
+            ),
+          Expanded(
+            child: Column(
+              children: [
                   AppHeader(
                     usuarioId: idAtual,
                     tipoUsuario: "ong",
@@ -670,7 +678,6 @@ class _EditarNecessidadesPageState extends State<EditarNecessidadesPage> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }

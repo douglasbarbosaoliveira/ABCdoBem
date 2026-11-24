@@ -216,7 +216,7 @@ class _MensagensPageState extends State<MensagensPage> {
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF0FAF7),
-        bottomNavigationBar: (isMobile && _conversaSelecionada == null)
+        bottomNavigationBar: (!isDesktop && _conversaSelecionada == null)
             ? AppBottomNav(
                 currentIndex: 3,
                 usuarioId: idAtivo,
@@ -224,6 +224,7 @@ class _MensagensPageState extends State<MensagensPage> {
               )
             : null,
         body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (isDesktop)
               AppSidebar(

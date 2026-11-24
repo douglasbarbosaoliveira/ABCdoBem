@@ -317,8 +317,9 @@ class _VoluntarioHomePageState extends State<VoluntarioHomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
       bottomNavigationBar:
-          isMobile ? AppBottomNav(currentIndex: 0, usuarioId: idAtivo) : null,
+          !isDesktop ? AppBottomNav(currentIndex: 0, usuarioId: idAtivo) : null,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isDesktop) AppSidebar(currentIndex: 0, usuarioId: idAtivo),
           Expanded(

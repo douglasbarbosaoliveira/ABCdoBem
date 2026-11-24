@@ -11,6 +11,8 @@ import '../../utils/responsive.dart';
 import '../../utils/app_data.dart';
 import '../../services/session_service.dart';
 import '../../widgets/header/app_header.dart';
+import '../../widgets/sidebar/app_sidebar.dart';
+import '../../widgets/bottom_nav/app_bottom_nav.dart';
 import '../models/voluntario_profile_models.dart';
 import '../services/voluntario_profile_service.dart';
 
@@ -347,35 +349,53 @@ class _EditarPerfilPageState extends State<EditarPerfilPage> {
   @override
   Widget build(BuildContext context) {
     final bool isMobile = Responsive.isMobile(context);
+    final bool isDesktop = Responsive.isDesktop(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
-      body: Column(
+      bottomNavigationBar: !isDesktop
+          ? AppBottomNav(
+              currentIndex: 4,
+              usuarioId: _idResolvido,
+              tipoUsuario: "voluntario",
+            )
+          : null,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppHeader(
-            usuarioId: _idResolvido,
-            showBackButton: true,
-          ),
+          if (isDesktop)
+            AppSidebar(
+              currentIndex: 4,
+              usuarioId: _idResolvido,
+              tipoUsuario: "voluntario",
+            ),
           Expanded(
-            child: _carregandoInicial
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF0C6B6B),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    padding: EdgeInsets.all(isMobile ? 16 : 24),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 720),
-                        child: Container(
-                          padding: EdgeInsets.all(isMobile ? 18 : 28),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFC2E4DC)),
+            child: Column(
+              children: [
+                AppHeader(
+                  usuarioId: _idResolvido,
+                  showBackButton: true,
+                ),
+                Expanded(
+                  child: _carregandoInicial
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF0C6B6B),
                           ),
-                          child: Column(
+                        )
+                      : SingleChildScrollView(
+                          padding: EdgeInsets.all(isMobile ? 16 : 24),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 720),
+                              child: Container(
+                                padding: EdgeInsets.all(isMobile ? 18 : 28),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFC2E4DC)),
+                                ),
+                                child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               const Text(
@@ -610,6 +630,9 @@ class _EditarPerfilPageState extends State<EditarPerfilPage> {
                       ),
                     ),
                   ),
+          ),
+              ],
+            ),
           ),
         ],
       ),

@@ -85,7 +85,7 @@ class EventoDetalheBottomBar extends StatelessWidget {
     );
   }
 
-  Widget _buildAcoesOng() {
+ Widget _buildAcoesOng() {
     return Row(
       children: [
         Expanded(
@@ -98,17 +98,15 @@ class EventoDetalheBottomBar extends StatelessWidget {
                 color: Color(0xFF0C6B6B),
                 size: 18,
               ),
-              label: const Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'Editar Evento',
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: Color(0xFF0C6B6B),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Editar Evento',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: Color(0xFF0C6B6B),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
                 ),
               ),
@@ -133,17 +131,15 @@ class EventoDetalheBottomBar extends StatelessWidget {
                 color: Colors.white,
                 size: 18,
               ),
-              label: const Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'Chamada & Gestão',
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Chamada & Gestão',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
                 ),
               ),

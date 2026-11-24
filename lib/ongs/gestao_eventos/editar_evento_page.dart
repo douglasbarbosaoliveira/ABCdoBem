@@ -110,7 +110,7 @@ class _EditarEventoPageState extends State<EditarEventoPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
-      bottomNavigationBar: isMobile
+      bottomNavigationBar: !isDesktop
           ? AppBottomNav(
               currentIndex: 4,
               usuarioId: widget.evento.ongId,
@@ -118,6 +118,7 @@ class _EditarEventoPageState extends State<EditarEventoPage> {
             )
           : null,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isDesktop)
             AppSidebar(

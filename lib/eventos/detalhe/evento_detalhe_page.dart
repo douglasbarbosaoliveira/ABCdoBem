@@ -445,7 +445,7 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF0FAF7),
-        bottomNavigationBar: isMobile
+        bottomNavigationBar: !isDesktop
             ? Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -462,14 +462,9 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
                   ),
                 ],
               )
-            : (ev != null && statusTemporal != null
-                ? _buildBarraInferior(
-                    ev,
-                    statusTemporal,
-                    incluirSafeAreaBottom: true,
-                  )
-                : null),
+            : null,
         body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (isDesktop)
               AppSidebar(
@@ -511,6 +506,12 @@ class _EventoDetalhePageState extends State<EventoDetalhePage> {
                                 idSessao: idSessao,
                               ),
                   ),
+                  if (isDesktop && ev != null && statusTemporal != null)
+                    _buildBarraInferior(
+                      ev,
+                      statusTemporal,
+                      incluirSafeAreaBottom: true,
+                    ),
                 ],
               ),
             ),

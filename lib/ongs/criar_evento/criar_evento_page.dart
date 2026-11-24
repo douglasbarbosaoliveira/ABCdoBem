@@ -590,7 +590,7 @@ class _CriarEventoPageState extends State<CriarEventoPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0FAF7),
-      bottomNavigationBar: isMobile
+      bottomNavigationBar: !isDesktop
           ? AppBottomNav(
               currentIndex: 4,
               usuarioId: idAtual,
@@ -598,10 +598,11 @@ class _CriarEventoPageState extends State<CriarEventoPage> {
             )
           : null,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isDesktop)
             AppSidebar(
-              currentIndex: 4,
+              currentIndex: 5,
               usuarioId: idAtual,
               tipoUsuario: widget.tipoUsuario,
             ),

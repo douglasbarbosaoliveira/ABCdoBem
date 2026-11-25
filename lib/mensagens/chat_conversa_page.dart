@@ -57,17 +57,13 @@ class _ChatConversaPageState extends State<ChatConversaPage> {
     setState(() => _carregando = true);
     final url = Uri.parse('$baseUrl/chat/history/${widget.destinatarioId}');
 
-    debugPrint('=== [CHAT API] BUSCANDO HISTÓRICO ===');
-    debugPrint('URL: $url');
-    debugPrint(
-        'Destinatário ID: ${widget.destinatarioId} (${widget.destinatarioNome})');
-    debugPrint('Token presente: ${_headers.containsKey('Authorization')}');
+   
 
     try {
       final response = await http.get(url, headers: _headers);
 
       debugPrint('Status Code Histórico: ${response.statusCode}');
-      debugPrint('Body Histórico: ${response.body}');
+      
 
       if (response.statusCode == 200) {
         final dynamic data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -104,9 +100,6 @@ class _ChatConversaPageState extends State<ChatConversaPage> {
       'content': texto,
     };
 
-    debugPrint('=== [CHAT API] ENVIANDO MENSAGEM ===');
-    debugPrint('URL: $url');
-    debugPrint('Payload: ${jsonEncode(payloadEnvio)}');
 
     // Mensagem otimista exibida imediatamente na tela
     final novaMensagemLocal = <String, dynamic>{
@@ -129,7 +122,7 @@ class _ChatConversaPageState extends State<ChatConversaPage> {
       );
 
       debugPrint('Status Code Envio: ${response.statusCode}');
-      debugPrint('Body Resposta Envio: ${response.body}');
+     
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         debugPrint('>>> Mensagem persistida no banco com sucesso!');

@@ -152,7 +152,7 @@ class _SecaoFotoCapaState extends State<SecaoFotoCapa> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              "Rota de IA ainda não disponível no backend: aplicada arte temática padrão da causa.",
+              "Capa temática selecionada automaticamente.",
             ),
             backgroundColor: Color(0xFF0C6B6B),
           ),

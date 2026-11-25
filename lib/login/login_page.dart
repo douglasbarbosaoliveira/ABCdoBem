@@ -129,9 +129,7 @@ class _LoginPageState extends State<LoginPage> {
       final String roleInicial =
           roleJwt.isNotEmpty ? roleJwt : (isVolunteer ? "USER" : "ONG");
 
-      debugPrint("Nome recebido no login: ${resposta.name}");
-      debugPrint(
-          "ID autenticado resolvido: $idAutenticado | Role JWT: $roleJwt");
+     
 
       // 2. Salva as credenciais iniciais na sessão global
       SessionService.instance.salvarSessao(

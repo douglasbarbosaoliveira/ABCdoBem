@@ -21,9 +21,7 @@ class LoginService {
     final url = Uri.parse('$baseUrl/auth/login');
     final payloadJson = jsonEncode(dto.toJson());
 
-    debugPrint("=== ENVIANDO LOGIN PARA A API ===");
-    debugPrint("URL: $url");
-    debugPrint("Payload: $payloadJson");
+    
 
     try {
       final response = await http
@@ -36,9 +34,7 @@ class LoginService {
 
       final String responseBody = utf8.decode(response.bodyBytes);
 
-      debugPrint("=== RESPOSTA DO LOGIN ===");
-      debugPrint("Status Code: ${response.statusCode}");
-      debugPrint("Body: $responseBody");
+      
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final dados = jsonDecode(responseBody) as Map<String, dynamic>;

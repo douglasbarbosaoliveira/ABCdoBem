@@ -33,7 +33,7 @@ class ChatService {
     required String tipoUsuario,
   }) async {
     final uri = Uri.parse('$baseUrl/chat/conversations');
-    debugPrint("=== BUSCANDO CONVERSAS DO CHAT (API REAL) ===");
+    
 
     try {
       final response = await http
@@ -63,7 +63,7 @@ class ChatService {
   Future<List<ChatMessage>> buscarMensagens(String conversationId) async {
     final uri =
         Uri.parse('$baseUrl/chat/conversations/$conversationId/messages');
-    debugPrint("=== BUSCANDO HISTÓRICO DE MENSAGENS ===");
+    
 
     try {
       final response = await http

@@ -61,9 +61,7 @@ class OngAuthService {
           : av;
     }
 
-    debugPrint('=== [POST] REQUISIÇÃO CADASTRO ONG ===');
-    debugPrint('URL: $url');
-    debugPrint('Body JSON: ${jsonEncode(logMapa)}');
+    
 
     final response = await http
         .post(

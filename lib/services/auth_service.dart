@@ -25,8 +25,7 @@ class AuthService {
     final url = Uri.parse('$baseUrl/auth/userRegister');
     final payloadJson = jsonEncode(dto.toJson());
 
-    debugPrint("=== ENVIANDO PARA A API ===");
-    debugPrint("URL: $url");
+   
     debugPrint("Payload: $payloadJson");
 
     try {

@@ -167,12 +167,7 @@ class _RegisterOngStep3PageState extends State<RegisterOngStep3Page> {
           : b64;
     }
 
-    debugPrint('================ [CADASTRO ONG - INÍCIO] ================');
-    debugPrint('Método: HTTP POST (application/json)');
-    debugPrint('Endpoint: https://abc-do-bem.onrender.com/ongs/cadastro');
-    debugPrint('E-mail de acesso: ${dto.emailLogin}');
-    debugPrint('Payload Etapas 1 e 2: ${jsonEncode(mapaLog)}');
-    debugPrint('=========================================================');
+    
   }
 
   Future<void> _processarFinalizacao() async {

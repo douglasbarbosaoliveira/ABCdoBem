@@ -37,9 +37,7 @@ class DashboardService {
         ? (SessionService.instance.usuarioId ?? voluntarioId)
         : voluntarioId;
 
-    debugPrint('================ [DEBUG DASHBOARD HOME] ================');
-    debugPrint('1. idReal resolvido: "$idReal"');
-    debugPrint('2. token presente?: ${_tokenAtual.isNotEmpty}');
+    
 
     final profileService = VoluntarioProfileService();
     final perfil = await profileService.buscarPerfil(

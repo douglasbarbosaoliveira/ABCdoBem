@@ -46,8 +46,7 @@ class VagasService {
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
-    debugPrint('=== [VAGAS API] LISTAR VAGAS ===');
-    debugPrint('URL: $uri');
+   
 
     try {
       final response = await http
@@ -73,9 +72,7 @@ class VagasService {
 
   Future<List<VagaModel>> buscarRecomendadas() async {
     final uri = Uri.parse('$baseUrl/opportunities/recommended');
-    debugPrint('=== [VAGAS API] VAGAS RECOMENDADAS ===');
-    debugPrint('URL: $uri');
-
+    
     try {
       final response = await http
           .get(uri, headers: _headers)
@@ -114,8 +111,7 @@ class VagasService {
     final uri = Uri.parse('$baseUrl/opportunities/nearby')
         .replace(queryParameters: queryParams);
 
-    debugPrint('=== [VAGAS API] VAGAS PRÓXIMAS ===');
-    debugPrint('URL: $uri');
+   
 
     try {
       final response = await http
@@ -141,9 +137,7 @@ class VagasService {
 
   Future<VagaModel?> obterDetalhes(String vagaId) async {
     final uri = Uri.parse('$baseUrl/opportunities/$vagaId');
-    debugPrint('=== [VAGAS API] DETALHES DA VAGA ===');
-    debugPrint('URL: $uri');
-
+  
     try {
       final response = await http
           .get(uri, headers: _headers)
@@ -166,9 +160,7 @@ class VagasService {
 
   Future<bool> candidatar(String vagaId) async {
     final uri = Uri.parse('$baseUrl/opportunities/$vagaId/apply');
-    debugPrint('=== [VAGAS API] CANDIDATURA EM VAGA ===');
-    debugPrint('URL: $uri');
-
+    
     try {
       final response = await http
           .post(uri, headers: _headers)
@@ -193,7 +185,7 @@ class VagasService {
 
   Future<VagaModel?> criarVaga(Map<String, dynamic> dadosVaga) async {
     final uri = Uri.parse('$baseUrl/opportunities');
-    debugPrint('=== [VAGAS API] CRIAR NOVA VAGA ===');
+    
 
     try {
       final response = await http
@@ -217,7 +209,7 @@ class VagasService {
 
   Future<List<VagaModel>> listarPorOng(String ongId) async {
     final uri = Uri.parse('$baseUrl/opportunities/ong/$ongId');
-    debugPrint('=== [VAGAS API] LISTAR VAGAS DA ONG ===');
+    
 
     try {
       final response = await http
@@ -243,7 +235,7 @@ class VagasService {
 
   Future<bool> atualizarVaga(String vagaId, Map<String, dynamic> dados) async {
     final uri = Uri.parse('$baseUrl/opportunities/$vagaId');
-    debugPrint('=== [VAGAS API] ATUALIZAR VAGA: $vagaId ===');
+    
 
     try {
       final response = await http
@@ -261,7 +253,7 @@ class VagasService {
 
   Future<bool> excluirVaga(String vagaId) async {
     final uri = Uri.parse('$baseUrl/opportunities/$vagaId');
-    debugPrint('=== [VAGAS API] EXCLUIR VAGA: $vagaId ===');
+    
 
     try {
       final response = await http
@@ -279,7 +271,7 @@ class VagasService {
 
   Future<List<dynamic>> listarInscritos(String vagaId) async {
     final uri = Uri.parse('$baseUrl/opportunities/$vagaId/applications');
-    debugPrint('=== [VAGAS API] LISTAR INSCRITOS NA VAGA ===');
+    
 
     try {
       final response = await http
@@ -307,7 +299,7 @@ class VagasService {
   ) async {
     final uri =
         Uri.parse('$baseUrl/opportunities/applications/$applicationId/status');
-    debugPrint('=== [VAGAS API] ALTERAR STATUS CANDIDATO: $novoStatus ===');
+    
 
     try {
       final response = await http
@@ -330,7 +322,7 @@ class VagasService {
   Future<bool> validarPresenca(String applicationId) async {
     final uri = Uri.parse(
         '$baseUrl/opportunities/applications/$applicationId/presenca');
-    debugPrint('=== [VAGAS API] VALIDAR PRESENÇA: $applicationId ===');
+    
 
     try {
       final response = await http

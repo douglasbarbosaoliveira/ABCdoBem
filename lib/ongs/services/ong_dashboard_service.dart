@@ -39,8 +39,7 @@ class OngDashboardService {
     final urlDashboard = Uri.parse("$baseUrl/users/dashboard/ong");
     final urlEventos = Uri.parse("$baseUrl/opportunities/ong/$idAlvo");
 
-    debugPrint("=== [GET] INICIANDO CARGA CONSOLIDADA DA ONG ($idAlvo) ===");
-
+   
     // Executa as 3 consultas principais em paralelo
     final responses = await Future.wait([
       http
@@ -110,8 +109,7 @@ class OngDashboardService {
       }
     }
 
-    debugPrint(
-        "=== [ONG DASHBOARD] Eventos encontrados para $idAlvo: ${listaBrutaEventos.length} ===");
+    
 
     for (final item in listaBrutaEventos) {
       if (item is Map<String, dynamic>) {
@@ -248,8 +246,7 @@ class OngDashboardService {
         Uri.parse("$baseUrl/opportunities/applications/$solicitacaoId/status");
     final statusEnvio = aprovado ? "ACCEPTED" : "REJECTED";
 
-    debugPrint("=== [PATCH] RESPONDER CANDIDATURA ===");
-    debugPrint("URL: $url");
+    
     debugPrint("Payload: ${jsonEncode({"status": statusEnvio})}");
 
     final response = await http
@@ -289,7 +286,7 @@ class OngDashboardService {
       String ongId, List<String> necessidades) async {
     final url = Uri.parse("$baseUrl/users/ongs/me");
 
-    debugPrint("=== [PATCH] ATUALIZAR NECESSIDADES ONG: $url ===");
+    
 
     final response = await http
         .patch(
